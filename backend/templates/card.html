@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ card.key }} · 規格閘門{% endblock %}
+{% block wrapclass %}wide{% endblock %}
+{% block bodyclass %}has-gate{% endblock %}
+{% block content %}
+
+<header class="card-head">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:5px">
+    <a class="k" href="{{ card.url }}" target="_blank" rel="noopener"
+       style="font-family:var(--mono);font-weight:800;color:var(--blue)">{{ card.key }}</a>
+    <span class="chip {{ 'frozen' if report.state == 'frozen' else 'gate' }}">
+      {{ '已凍結 ' ~ report.version if report.state == 'frozen' else '待審 ' ~ report.version }}
+    </span>
+    <span class="lb">{{ card.jira_status }}</span>
+  </div>
+  <h1>{{ card.title }}</h1>
+  {% if report.state == 'frozen' %}
+    <div class="sub">
+      這一版已經凍結，答案不能再改。
+      <a href="/cards/{{ card.key }}/review.json">下載決策紀錄 JSON</a>
+    </div>
+  {% else %}
+    <div class="sub">第 3 節「關鍵決策點」是唯一需要你動腦的部分。題目穿插在相關段落底下，讀到哪答到哪。</div>
+  {% endif %}
+</header>
+
+{% if message %}<div class="status {{ message_kind }}"><b>{{ message }}</b></div>{% endif %}
+
+<form method="post" action="/cards/{{ card.key }}/answers" id="gateform">
+{% for section in sections %}
+  <section class="report {{ 'hot' if section.n == 3 else '' }}">
+    <h2><span class="n">{{ '%02d' % section.n }}</span>{{ section.title }}</h2>
+    <div class="body-md">{{ section.body_html | safe }}</div>
+
+    {% for q in section.questions %}
+    <div class="q {{ 'answered' if q.is_answered else '' }}">
+      <div class="q-head">
+        <span class="q-id">{{ q.slug }}</span>
+        <span class="q-title">{{ q.prompt }}</span>
+      </div>
+
+      {% if q.type == 'single' %}
+      <div class="opts">
+        {% for o in q.options %}
+        <label class="opt {{ 'none' if o.value == 'none' else '' }} {{ 'sel' if q.choice == o.value else '' }}">
+          <input type="radio" name="choice__{{ q.slug }}" value="{{ o.value }}"
+                 {% if q.choice == o.value %}checked{% endif %} {{ 'disabled' if frozen }}>
+          <span class="opt-b">
+            <span class="opt-t">{% if o.recommended %}<span class="star">★ </span>{% endif %}{{ o.label }}</span>
+            {% if o.detail %}<span class="opt-d">{{ o.detail }}</span>{% endif %}
+            {% if o.cost %}<span class="opt-cost">{{ o.cost }}</span>{% endif %}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+
+      {% elif q.type == 'boolean' %}
+      <div class="yn">
+        <label class="{{ 'sel-y' if q.value is true else '' }}">
+          <input type="radio" name="value__{{ q.slug }}" value="yes"
+                 {% if q.value is true %}checked{% endif %} {{ 'disabled' if frozen }}>是</label>
+        <label class="{{ 'sel-n' if q.value is false else '' }}">
+          <input type="radio" name="value__{{ q.slug }}" value="no"
+                 {% if q.value is false %}checked{% endif %} {{ 'disabled' if frozen }}>否</label>
+      </div>
+
+      {% else %}
+      <textarea name="text__{{ q.slug }}" rows="3"
+                placeholder="寫下你的想法" {{ 'disabled' if frozen }}>{{ q.text or '' }}</textarea>
+      {% endif %}
+
+      <label class="note-label {{ 'must' if q.choice == 'none' else '' }}">
+        {{ '必填 —— 你要的是什麼？' if q.choice == 'none' else '備註（可留空）' }}
+      </label>
+      <input class="note" name="note__{{ q.slug }}" value="{{ q.note or '' }}"
+             placeholder="選了「以上皆非」就一定要寫" {{ 'disabled' if frozen }}>
+    </div>
+    {% endfor %}
+  </section>
+{% endfor %}
+
+{% if not frozen %}
+<div class="gate-bar">
+  <div class="gate-inner">
+    <span class="prog">已答 <b>{{ answered_count }}</b> / {{ required_count }} 題必答</span>
+    <span class="spacer" style="flex:1"></span>
+    <button type="submit" class="ghost">儲存答案</button>
+    <button type="submit" formaction="/cards/{{ card.key }}/freeze"
+            {{ 'disabled' if answered_count < required_count }}
+            title="{{ '還有題目沒答完' if answered_count < required_count else '' }}">
+      凍結並開工
+    </button>
+  </div>
+</div>
+{% endif %}
+</form>
+
+{% endblock %}

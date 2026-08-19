@@ -61,3 +61,106 @@ button.ghost:hover { background:#fff; border-color:var(--blue); }
 table { width:100%; border-collapse:collapse; font-size:.88rem; margin-top:10px; }
 th,td { border:1px solid var(--line); padding:7px 11px; text-align:left; }
 th { background:#f3f5f9; font-size:.83rem; width:34%; }
+
+/* ===== 導覽 ===== */
+nav.top {
+  max-width:960px; margin:0 auto 18px; display:flex; gap:16px; align-items:center;
+  font-size:.88rem;
+}
+nav.top .brand { font-weight:800; letter-spacing:-.01em; }
+nav.top a { color:var(--muted); text-decoration:none; }
+nav.top a:hover, nav.top a.on { color:var(--ink); }
+nav.top .spacer { flex:1; }
+nav.top .who { font-family:var(--mono); font-size:.76rem; color:var(--muted); }
+.wrap.wide { max-width:960px; }
+
+/* ===== 卡片列表 ===== */
+.jcard {
+  background:var(--card); border:1px solid var(--line); border-left:4px solid var(--line);
+  border-radius:12px; padding:15px 18px; margin-bottom:11px;
+}
+.jcard.gate  { border-left-color:var(--amber); }
+.jcard.frozen{ border-left-color:var(--green); }
+.jcard .k { font-family:var(--mono); font-weight:800; color:var(--blue); font-size:.9rem; }
+.jcard .t { font-size:.97rem; margin:2px 0 7px; }
+.jcard .meta { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.lb { font-family:var(--mono); font-size:.7rem; background:#f0f3f8; color:var(--muted);
+      padding:2px 8px; border-radius:5px; }
+.chip { font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+.chip.todo   { background:#eef1f6; color:var(--muted); }
+.chip.gate   { background:var(--amber-soft); color:var(--amber); }
+.chip.frozen { background:var(--green-soft); color:#14532d; }
+.chip.running{ background:var(--blue-soft); color:var(--blue); }
+.chip.failed { background:var(--red-soft); color:var(--red); }
+.jcard form { display:inline; }
+.jcard button { padding:7px 15px; font-size:.85rem; }
+
+/* ===== 報告的節 ===== */
+section.report > h2 { display:flex; align-items:baseline; gap:10px; }
+section.report > h2 .n {
+  font-family:var(--mono); font-size:.73rem; color:#fff; background:var(--ink);
+  border-radius:6px; padding:2px 8px; flex:0 0 auto;
+}
+section.report.hot { border:2px solid var(--amber); background:#fffdf9; }
+section.report.hot > h2 .n { background:var(--amber); }
+.body-md { font-size:.94rem; }
+.body-md h3 { font-size:1rem; margin:14px 0 4px; }
+.body-md ul, .body-md ol { margin:8px 0 8px 22px; }
+.body-md li { margin:3px 0; }
+.body-md pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px;
+               padding:12px 14px; overflow-x:auto; font-family:var(--mono);
+               font-size:.78rem; line-height:1.6; margin:10px 0; }
+.body-md table { width:100%; border-collapse:collapse; font-size:.86rem; margin:10px 0; }
+.body-md th, .body-md td { border:1px solid var(--line); padding:7px 10px; text-align:left; }
+.body-md th { background:#f3f5f9; }
+
+/* ===== 題目（沿用 SpecGate prototype） ===== */
+.q { border:2px solid var(--blue); border-radius:12px; background:var(--blue-soft);
+     padding:16px 18px; margin:18px 0 4px; }
+.q.answered { border-color:var(--green); background:var(--green-soft); }
+.q-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+.q-id { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff;
+        background:var(--blue); border-radius:5px; padding:1px 8px; }
+.q.answered .q-id { background:var(--green); }
+.q-title { font-weight:700; font-size:.98rem; }
+.opts { display:flex; flex-direction:column; gap:8px; }
+label.opt { display:flex; gap:11px; align-items:flex-start; background:#fff;
+            border:1.5px solid var(--line); border-radius:9px; padding:11px 13px;
+            cursor:pointer; transition:all .16s; }
+label.opt:hover { border-color:var(--blue); }
+label.opt.sel { border-color:var(--green); background:#f6fdf8; box-shadow:0 0 0 3px var(--green-soft); }
+label.opt.none { border-style:dashed; }
+label.opt.none.sel { border-color:var(--amber); background:#fffdf6; box-shadow:0 0 0 3px var(--amber-soft); }
+label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
+.opt-b { flex:1; }
+.opt-t { font-weight:600; font-size:.92rem; display:block; }
+.opt-t .star { color:var(--amber); font-weight:800; }
+.opt-d { font-size:.83rem; color:var(--muted); line-height:1.6; margin-top:3px; display:block; }
+.opt-cost { font-size:.8rem; color:var(--red); margin-top:3px; display:block; }
+.yn { display:flex; gap:10px; }
+.yn label { flex:1; text-align:center; padding:10px; border-radius:9px;
+            border:1.5px solid var(--line); background:#fff; cursor:pointer; font-weight:700;
+            font-size:.9rem; }
+.yn label.sel-y { border-color:var(--green); background:var(--green-soft); color:#14532d; }
+.yn label.sel-n { border-color:var(--red); background:var(--red-soft); color:var(--red); }
+.yn input { display:none; }
+.q textarea, .q input.note {
+  width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line);
+  border-radius:9px; padding:10px 12px; background:#fff; resize:vertical;
+  font-family:inherit; margin-top:8px;
+}
+.q textarea:focus, .q input.note:focus { outline:none; border-color:var(--blue); }
+.note-label { font-size:.78rem; color:var(--muted); display:block; margin-top:9px; }
+.note-label.must { color:var(--amber); font-weight:700; }
+
+/* ===== 底部閘門列 ===== */
+.gate-bar { position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+  border-top:1px solid var(--line); box-shadow:0 -4px 18px rgba(26,35,51,.09);
+  padding:13px 18px; backdrop-filter:blur(8px); z-index:50; }
+.gate-inner { max-width:960px; margin:0 auto; display:flex; gap:12px;
+              align-items:center; flex-wrap:wrap; }
+.prog { font-size:.86rem; color:var(--muted); font-family:var(--mono); }
+.prog b { color:var(--ink); }
+.gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
+body.has-gate { padding-bottom:120px; }
+.empty { text-align:center; color:var(--muted); padding:38px 0; font-size:.92rem; }

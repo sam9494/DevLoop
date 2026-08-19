@@ -6,8 +6,15 @@
 <title>{% block title %}DevLoop{% endblock %}</title>
 <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
-<div class="wrap">
+<body class="{% block bodyclass %}{% endblock %}">
+<nav class="top">
+  <span class="brand">DevLoop</span>
+  <a href="/" class="{% if nav == 'cards' %}on{% endif %}">卡片</a>
+  <a href="/settings" class="{% if nav == 'settings' %}on{% endif %}">設定</a>
+  <span class="spacer"></span>
+  {% if connection %}<span class="who">{{ connection.jira_project }} · {{ connection.display_name }}</span>{% endif %}
+</nav>
+<div class="wrap {% block wrapclass %}{% endblock %}">
 {% block content %}{% endblock %}
 </div>
 </body>

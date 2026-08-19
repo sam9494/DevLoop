@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}DevLoop · 卡片{% endblock %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+
+<header class="card-head">
+  <h1>待過閘的卡</h1>
+  <div class="sub">
+    從 Jira 專案 <code>{{ connection.jira_project }}</code> 拉進來的未完成卡。
+    產生規格後讀報告、答題、凍結 —— 凍結那一刻卡會自動移到「進行中」。
+  </div>
+  <div class="actions" style="margin-top:14px">
+    <form method="post" action="/cards/sync">
+      <button type="submit">從 Jira 重新同步</button>
+    </form>
+    {% if synced %}<span class="note">剛剛同步了 {{ synced }} 張。</span>{% endif %}
+    {% if error %}<span class="note" style="color:var(--red)">{{ error }}</span>{% endif %}
+  </div>
+</header>
+
+<section>
+  {% if not cards %}
+    <div class="empty">
+      這裡還沒有卡。按上面的「從 Jira 重新同步」把 {{ connection.jira_project }} 的未完成卡拉進來。
+    </div>
+  {% endif %}
+
+  {% for row in cards %}
+  <div class="jcard {{ row.gate_class }}">
+    <div class="k">{{ row.card.key }}</div>
+    <div class="t">{{ row.card.title }}</div>
+    <div class="meta">
+      <span class="chip {{ row.gate_class or 'todo' }}">{{ row.gate_label }}</span>
+      <span class="lb">{{ row.card.jira_status }}</span>
+      {% for l in row.card.labels or [] %}<span class="lb">{{ l }}</span>{% endfor %}
+      <span class="spacer" style="flex:1"></span>
+      {% if row.report %}
+        <a href="/cards/{{ row.card.key }}"><button type="button">讀報告</button></a>
+      {% elif row.job_running %}
+        <span class="note">產生中…（重新整理看進度）</span>
+      {% else %}
+        <form method="post" action="/cards/{{ row.card.key }}/generate">
+          <button type="submit">產生規格</button>
+        </form>
+      {% endif %}
+    </div>
+    {% if row.job_error %}<div class="note" style="color:var(--red);margin-top:7px">上次產生失敗：{{ row.job_error }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% endblock %}

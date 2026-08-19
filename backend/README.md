@@ -21,6 +21,20 @@ Jira 憑證**不放在 .env** —— 開 <http://localhost:8100/settings> 填，
 make ci                   # ruff + mypy strict + import-linter + pytest
 ```
 
+## 主流程
+
+```
+/            卡片列表 —— 從 Jira 同步、對某張卡按「產生規格」
+             ↓ worker 在背景跑 claude -p，產出八節報告與題目
+/cards/{key} 規格頁 —— 讀報告、答題（題目穿插在相關段落底下）
+             ↓ 必答題答完才解鎖
+             凍結 → 版本鎖 v1.0、答案萃成決策寫進圖、Jira 卡移到「進行中」
+/cards/{key}/review.json   決策紀錄，格式與 SpecGate 那幾份一致
+```
+
+沒有已驗證的 Jira 連線時，`/` 一律 307 導到 `/settings` —— 沒有憑證就拉不到卡，
+主流程整條空轉，先擋在門口比讓人看到空列表誠實。
+
 ## 憑證怎麼保管
 
 `connections` 表一列一個人（`owner_key`），token 以 Fernet 加密後存放，

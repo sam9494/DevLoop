@@ -4,7 +4,7 @@
 沒有資料庫時整批跳過，這樣沒開 docker 也還能跑其他測試。
 """
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 import sqlalchemy as sa
@@ -27,14 +27,32 @@ needs_db = pytest.mark.skipif(not _database_available(), reason="資料庫沒起
 
 
 @pytest.fixture
-def session() -> Iterator[Session]:
+def db_connection() -> Iterator[sa.Connection]:
     engine = sa.create_engine(get_settings().database_url)
     connection = engine.connect()
     transaction = connection.begin()
-    s = Session(bind=connection, expire_on_commit=False)
+    try:
+        yield connection
+    finally:
+        transaction.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def session(db_connection: sa.Connection) -> Iterator[Session]:
+    s = Session(bind=db_connection, expire_on_commit=False)
     try:
         yield s
     finally:
         s.close()
-        transaction.rollback()
-        connection.close()
+
+
+@pytest.fixture
+def session_factory(db_connection: sa.Connection) -> Callable[[], Session]:
+    """worker 會自己開關 session —— 給它獨立的，但綁在同一條連線上，
+    這樣測試看得到它寫的東西，而它 close() 也不會弄壞測試的 session。"""
+
+    def make() -> Session:
+        return Session(bind=db_connection, expire_on_commit=False)
+
+    return make
