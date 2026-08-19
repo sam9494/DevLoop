@@ -1,0 +1,23 @@
+# 技術債登記簿
+
+> 紀律抄自 JobRadar：每筆「允許」的債留一行（欠什麼 / 為何 / 償還觸發條件）。
+> 債不可怕，**沒登記的債**才可怕。
+
+## 允許的債
+
+| 債務 | 為什麼現在欠 | 償還觸發條件 |
+|---|---|---|
+| background worker 具備寫檔權限（acceptEdits），但第一刀沒有用到該權限的工作 | Sam 於 IMPL-01 決定，避免第二刀再開一次權限 | 做 ④ 產程式時改為每個 job 開獨立 git branch |
+| worker 是進程內 thread，無重試佇列 | 併發量是「一次一張卡」 | 同時跑 >3 個 job 或失敗率 >10% |
+| 骨架設定複製自 JobRadar，未共用 | 共用會把兩個專案綁死，且 DevLoop 要管理 JobRadar | 兩邊工具版本漂到互相打架時 |
+| 服務手動 `make dev` 啟動，無 launchd | 開發期要看 log | 開始每天實際使用時 |
+| Postgres → Neo4j 雙寫沒有 transaction 保證 | 兩個資料庫本來就沒有跨庫交易 | 靠 `rebuild-graph` 從 edges 表重建；發現不一致 >1 次就自動化對帳 |
+| 單人、無登入 | 只有 Sam 會開 | 團隊版 |
+| ruff 關掉 RUF001-003 | 那三條是防同形字攻擊，會把中文全形標點全標成可疑 | 若真的出現同形字問題再逐檔開回 |
+
+## 禁止項（沒有例外）
+
+- ❌ 無 migration 直改 schema — 永遠走 Alembic
+- ❌ secrets 進 repo — .env 且 .gitignore 已擋
+- ❌ claude 子行程不設 cwd — 目錄限制是唯一擋住它亂改檔的機制（已實測有效）
+- ❌ Neo4j 當真相來源 — 它永遠是 edges 表的投影

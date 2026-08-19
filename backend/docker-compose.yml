@@ -1,0 +1,42 @@
+# 只有資料庫進容器 —— 服務本身跑在本機，才叫得到本地的 claude CLI（TECH-002 / service-run）
+#
+# name 一定要寫死：docker compose 預設拿「目錄名」當專案名，而 JobRadar 的資料夾
+# 也叫 backend —— 沒有這一行，兩個專案會互相把對方的容器換掉、共用同一個 volume。
+name: devloop
+services:
+  db:
+    image: postgres:16
+    container_name: devloop-db
+    environment:
+      POSTGRES_USER: devloop
+      POSTGRES_PASSWORD: devloop
+      POSTGRES_DB: devloop
+    ports:
+      - "5433:5432"   # 5432 已被 JobRadar 佔用
+    volumes:
+      - devloop-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devloop"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  graph:
+    image: neo4j:5-community
+    container_name: devloop-graph
+    environment:
+      NEO4J_AUTH: neo4j/devloopdevloop
+    ports:
+      - "7474:7474"   # browser
+      - "7687:7687"   # bolt
+    volumes:
+      - devloop-neo4jdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  devloop-pgdata:
+  devloop-neo4jdata:
