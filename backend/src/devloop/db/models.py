@@ -171,3 +171,29 @@ class Edge(Base):
     to_id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
     kind: Mapped[str] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=sa.func.now())
+
+
+class Connection(Base):
+    """一個人的 Jira 連線設定。
+
+    現在只會有一列（owner_key='sam'），但欄位從第一天就是「每人一列」的形狀 ——
+    之後要開給別人用時不必改 schema，只要加登入把 owner_key 換成真的使用者。
+    token 只存密文，明文永遠不落地、不進 log、不回送瀏覽器。
+    """
+
+    __tablename__ = "connections"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid7)
+    owner_key: Mapped[str] = mapped_column(unique=True)
+    jira_site: Mapped[str]  # swallowhouse.atlassian.net
+    jira_email: Mapped[str]
+    jira_token_encrypted: Mapped[str]
+    jira_project: Mapped[str]
+    jira_account_id: Mapped[str | None]  # 驗證成功時回填，證明憑證真的能用
+    display_name: Mapped[str | None]
+    verified_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    last_error: Mapped[str | None]
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=sa.func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMPTZ, server_default=sa.func.now(), onupdate=sa.func.now()
+    )

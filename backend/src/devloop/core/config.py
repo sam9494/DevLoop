@@ -14,10 +14,8 @@ class Settings(BaseSettings):
     neo4j_user: str = "neo4j"
     neo4j_password: str = ""
 
-    jira_site: str = ""
-    jira_email: str = ""
-    jira_token: str = ""
-    jira_project: str = "KAN"
+    # 憑證加密金鑰。空的話任何憑證操作都會直接失敗，不會退化成明文
+    secret_key: str = ""
 
     # claude 子行程只能在這個目錄底下動作 —— 沒有 --cwd 旗標，靠 spawn cwd 限制
     workspace_root: Path = Path.home()

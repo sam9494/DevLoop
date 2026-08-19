@@ -7,12 +7,27 @@
 ## 跑起來
 
 ```bash
-cp .env.example .env      # 填 DEVLOOP_JIRA_TOKEN
+cp .env.example .env
+# 產一把加密金鑰填進 DEVLOOP_SECRET_KEY：
+uv run python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 make up                   # 只有資料庫進容器：postgres 5433 / neo4j 7687
 make migrate
 make dev                  # 服務跑在本機（才叫得到本地的 claude）
+```
+
+Jira 憑證**不放在 .env** —— 開 <http://localhost:8100/settings> 填，存進資料庫前會加密。
+
+```bash
 make ci                   # ruff + mypy strict + import-linter + pytest
 ```
+
+## 憑證怎麼保管
+
+`connections` 表一列一個人（`owner_key`），token 以 Fernet 加密後存放，
+金鑰在 `DEVLOOP_SECRET_KEY` 環境變數 —— 跟資料庫分開，只撈到資料庫解不開。
+明文只在三個地方短暫存在：使用者送出的表單、驗證時的 HTTP 標頭、寫入前的加密呼叫。
+頁面永遠只顯示遮罩（`••••••••1234`），log 不印。金鑰沒設時憑證操作直接失敗，
+不會退化成明文存放。
 
 ## 為什麼服務不進容器
 

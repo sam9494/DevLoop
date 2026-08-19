@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}DevLoop · 設定{% endblock %}
+{% block content %}
+
+<header class="card-head">
+  <h1>連線設定</h1>
+  <div class="sub">DevLoop 要讀你的 Jira 卡、在你批准後把卡移到「進行中」，所以需要一組你的 Jira API token。</div>
+</header>
+
+<section>
+  {% if conn and conn.is_verified %}
+    <div class="status ok">
+      <b>✅ 已連上 Jira</b>
+      以 <code>{{ conn.display_name }}</code> 的身分，專案 <code>{{ conn.jira_project }}</code>。
+      最後驗證：{{ conn.verified_at.strftime('%Y-%m-%d %H:%M') }}
+    </div>
+  {% elif conn and conn.last_error %}
+    <div class="status bad">
+      <b>⚠️ 設定存起來了，但連不上</b>
+      {{ conn.last_error }}
+    </div>
+  {% else %}
+    <div class="status none">
+      <b>還沒設定</b>
+      填完下面四格按「儲存並驗證」，我會立刻打一次 Jira 確認憑證能用。
+    </div>
+  {% endif %}
+
+  <form method="post" action="/settings">
+    <div class="field">
+      <label for="site">Jira 站台</label>
+      <span class="hint">你的 Atlassian 網址，例如 <code>yourteam.atlassian.net</code></span>
+      <input id="site" name="site" required
+             value="{{ conn.jira_site if conn else '' }}" placeholder="yourteam.atlassian.net">
+    </div>
+
+    <div class="field">
+      <label for="email">Atlassian 帳號 email</label>
+      <span class="hint">API token 是綁在這個帳號上的</span>
+      <input id="email" name="email" type="email" required
+             value="{{ conn.jira_email if conn else '' }}" placeholder="you@example.com">
+    </div>
+
+    <div class="field">
+      <label for="token">API token</label>
+      <span class="hint">
+        到 <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank"
+              rel="noopener">Atlassian 的 API tokens 頁</a> 產生一組。
+        存進資料庫前會加密，頁面上永遠只顯示遮罩。
+      </span>
+      <input id="token" name="token" type="password" autocomplete="off"
+             {% if conn %}placeholder="目前是 {{ conn.token_masked }}　留空 = 不更換"
+             {% else %}placeholder="貼上剛產生的 token" required{% endif %}>
+    </div>
+
+    <div class="field">
+      <label for="project">專案代號</label>
+      <span class="hint">要被 DevLoop 管理的 Jira 專案，例如 <code>KAN</code></span>
+      <input id="project" name="project" required
+             value="{{ conn.jira_project if conn else '' }}" placeholder="KAN">
+    </div>
+
+    <div class="actions">
+      <button type="submit">儲存並驗證</button>
+      <span class="note">按下去會立刻打一次 Jira，成功才算數。</span>
+    </div>
+  </form>
+
+  <div class="warn">
+    <b>token 怎麼被保管的</b>：資料庫裡只有密文（Fernet 加密），金鑰放在伺服器的環境變數、
+    不在資料庫裡 —— 兩者分開，撈到資料庫也解不開。頁面不會回送明文，log 也不會印。
+    要撤銷隨時可以到 Atlassian 那頁把 token 刪掉，這裡就會立刻失效。
+  </div>
+</section>
+
+{% endblock %}
