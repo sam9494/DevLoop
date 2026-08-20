@@ -2,8 +2,10 @@
 
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
 from devloop.db.models import Card, Job
-from devloop.runner.worker import Worker, claim_next_job
+from devloop.runner.worker import Worker, claim_next_job, reap_orphaned_jobs
 from devloop.spec import service
 from tests.conftest import needs_db
 
@@ -64,3 +66,64 @@ def test_an_exploding_job_is_marked_failed_and_does_not_kill_the_worker(  # type
     assert job.status == "failed"
     assert "炸了" in (job.error or "")
     assert worker.tick() is False  # 還活著，只是沒工作了
+
+
+@needs_db
+def test_the_claim_is_committed_before_the_work_starts(session, session_factory) -> None:  # type: ignore[no-untyped-def]
+    """真的跑起來才發現的 bug：認領後沒 commit，狀態改成 running 只有自己看得到。
+
+    `claude -p` 一跑就是好幾分鐘，那段期間卡片列表顯示的是「尚未產生規格」，
+    而且那一列的鎖被抓著不放。認領完必須立刻 commit，狀態才對外可見。
+
+    共用連線的測試環境驗不出跨連線可見性，所以直接驗機制：
+    handler 被呼叫的時候，前面一定已經 commit 過了。
+    """
+    _queued(session)
+    session.commit()
+
+    events: list[str] = []
+
+    def spying_factory() -> Session:
+        real = session_factory()
+        original_commit = real.commit
+
+        def commit() -> None:
+            events.append("commit")
+            original_commit()
+
+        real.commit = commit  # type: ignore[method-assign]
+        return real
+
+    def handler(s, j) -> None:  # type: ignore[no-untyped-def]
+        events.append("handler:" + j.status)
+        j.status = "succeeded"
+
+    Worker(spying_factory, handler).tick()
+
+    assert events[0] == "commit"  # 認領之後立刻 commit
+    assert events[1] == "handler:running"  # 工作開始時狀態已經是 running
+    assert events[-1] == "commit"  # 做完再 commit 一次
+
+
+@needs_db
+def test_a_job_left_running_by_a_dead_process_goes_back_to_the_queue(session) -> None:  # type: ignore[no-untyped-def]
+    """只有一個 worker，所以啟動當下還掛著 running 的一定是上個行程死掉留下的。"""
+    job = _queued(session)
+    job.status = "running"
+    session.flush()
+
+    assert reap_orphaned_jobs(session) == 1
+
+    assert job.status == "queued"
+    assert job.started_at is None
+    assert "沒跑完就結束" in (job.error or "")
+
+
+@needs_db
+def test_reaping_leaves_finished_jobs_alone(session) -> None:  # type: ignore[no-untyped-def]
+    job = _queued(session)
+    job.status = "succeeded"
+    session.flush()
+
+    assert reap_orphaned_jobs(session) == 0
+    assert job.status == "succeeded"

@@ -113,7 +113,11 @@ class Answer(Base):
 
 
 class Job(Base):
-    """一次本地 Claude Code 呼叫。成本與權限拒絕都落地 —— 探針量到每次啟動約 US$0.09。"""
+    """一次本地 Claude Code 呼叫。成本與權限拒絕都落地。
+
+    實測：空轉一句話約 US$0.09（系統提示快取的地板），
+    讀完 JobRadar 整個 repo 產一份八節報告是 US$1.68 / 39 turns / 7 分鐘。
+    """
 
     __tablename__ = "jobs"
     __table_args__ = (

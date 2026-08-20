@@ -17,6 +17,20 @@ from devloop.db.models import Job
 log = structlog.get_logger()
 
 
+def reap_orphaned_jobs(session: Session) -> int:
+    """把卡在 running 的工作放回佇列。
+
+    只有一個 worker，所以啟動當下還掛著 running 的一定是上次行程死掉留下的孤兒。
+    """
+    orphans = list(session.scalars(select(Job).where(Job.status == "running")).all())
+    for job in orphans:
+        job.status = "queued"
+        job.started_at = None
+        job.error = "上一個行程沒跑完就結束了，重新排隊"
+    session.flush()
+    return len(orphans)
+
+
 def claim_next_job(session: Session) -> Job | None:
     """SKIP LOCKED：多個 worker 同時撈也不會撿到同一個。"""
     job = session.scalar(
@@ -49,6 +63,14 @@ class Worker:
     def start(self) -> None:
         if self._thread is not None:
             return
+        session = self._session_factory()
+        try:
+            reaped = reap_orphaned_jobs(session)
+            session.commit()
+            if reaped:
+                log.warning("worker.reaped_orphans", count=reaped)
+        finally:
+            session.close()
         self._thread = threading.Thread(target=self._loop, name="devloop-worker", daemon=True)
         self._thread.start()
         log.info("worker.started")
@@ -67,6 +89,11 @@ class Worker:
             job = claim_next_job(session)
             if job is None:
                 return False
+
+            # 立刻 commit：狀態要讓外面看得到，行鎖也不能抓著跑好幾分鐘。
+            # 沒有這一步，卡片列表在整段執行期間都會顯示「尚未產生規格」。
+            session.commit()
+
             try:
                 self._handler(session, job)
             except Exception as exc:  # worker 不能被單一 job 弄死

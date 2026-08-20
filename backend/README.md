@@ -28,6 +28,7 @@ Jira 憑證**不放在 .env** —— 開 <http://localhost:8100/settings> 填，
 
 ```bash
 make ci                   # ruff + mypy strict + import-linter + pytest
+                          # 測試跑在獨立的 devloop_test 資料庫，不碰開發資料
 make rebuild-graph        # 清空 Neo4j 並從 Postgres 的 edges 表重建
 ```
 
@@ -46,6 +47,12 @@ make rebuild-graph        # 清空 Neo4j 並從 Postgres 的 edges 表重建
 
 沒有已驗證的 Jira 連線時，`/` 一律 307 導到 `/settings` —— 沒有憑證就拉不到卡，
 主流程整條空轉，先擋在門口比讓人看到空列表誠實。
+
+## 一次規格產生要多少
+
+實測（KAN-16，讀完整個 JobRadar backend）：**US$1.68 / 39 turns / 7 分鐘**。
+空轉一句話是 US$0.09 —— 那是系統提示快取的地板，不是實際工作的價錢。
+每個 job 的成本都落在 `jobs.cost_usd`。
 
 ## 憑證怎麼保管
 
