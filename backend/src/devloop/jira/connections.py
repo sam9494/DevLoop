@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -16,12 +17,51 @@ from devloop.jira.client import HttpJiraClient, JiraClient, JiraError
 
 
 @dataclass(frozen=True)
+class WorkspaceStatus:
+    """被管理的專案目錄長什麼樣 —— claude 會在這裡面跑，所以要先看清楚。"""
+
+    path: str
+    exists: bool
+    is_dir: bool
+    is_git_repo: bool
+
+    @property
+    def error(self) -> str | None:
+        if not self.path:
+            return "還沒設定專案根目錄"
+        if not self.exists:
+            return f"找不到這個路徑：{self.path}"
+        if not self.is_dir:
+            return f"這不是資料夾：{self.path}"
+        return None
+
+    @property
+    def warning(self) -> str | None:
+        if self.error is None and not self.is_git_repo:
+            return "這個目錄不是 git repo —— claude 改壞了沒有還原點"
+        return None
+
+
+def inspect_workspace(path: str) -> WorkspaceStatus:
+    candidate = Path(path).expanduser() if path else Path()
+    exists = bool(path) and candidate.exists()
+    is_dir = exists and candidate.is_dir()
+    return WorkspaceStatus(
+        path=path,
+        exists=exists,
+        is_dir=is_dir,
+        is_git_repo=is_dir and (candidate / ".git").exists(),
+    )
+
+
+@dataclass(frozen=True)
 class ConnectionView:
     """給頁面看的形狀 —— 刻意沒有明文 token 這個欄位。"""
 
     jira_site: str
     jira_email: str
     jira_project: str
+    workspace: WorkspaceStatus
     token_masked: str
     display_name: str | None
     verified_at: datetime | None
@@ -30,6 +70,11 @@ class ConnectionView:
     @property
     def is_verified(self) -> bool:
         return self.verified_at is not None and not self.last_error
+
+    @property
+    def is_usable(self) -> bool:
+        """憑證通了、工作目錄也對，才真的能跑 job。"""
+        return self.is_verified and self.workspace.error is None
 
 
 def get_connection(session: Session, owner_key: str) -> Connection | None:
@@ -41,6 +86,7 @@ def to_view(conn: Connection) -> ConnectionView:
         jira_site=conn.jira_site,
         jira_email=conn.jira_email,
         jira_project=conn.jira_project,
+        workspace=inspect_workspace(conn.workspace_root),
         token_masked=mask(decrypt(conn.jira_token_encrypted)),
         display_name=conn.display_name,
         verified_at=conn.verified_at,
@@ -60,6 +106,7 @@ def save_connection(
     email: str,
     project: str,
     token: str | None,
+    workspace: str = "",
     verifier: JiraClient | None = None,
 ) -> ConnectionView:
     """存檔並立刻驗證。token 傳 None 代表「沿用既有的，我沒有要換」。
@@ -76,6 +123,7 @@ def save_connection(
             jira_site=site,
             jira_email=email,
             jira_project=project,
+            workspace_root=workspace,
             jira_token_encrypted=encrypt(token),
         )
         session.add(conn)
@@ -83,6 +131,7 @@ def save_connection(
         conn.jira_site = site
         conn.jira_email = email
         conn.jira_project = project
+        conn.workspace_root = workspace
         if token:
             conn.jira_token_encrypted = encrypt(token)
 

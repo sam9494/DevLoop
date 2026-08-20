@@ -16,6 +16,7 @@ FORM = {
     "site": "team.atlassian.net",
     "email": "sam@example.com",
     "project": "kan",
+    "workspace": "/tmp",
     "token": SECRET,
 }
 

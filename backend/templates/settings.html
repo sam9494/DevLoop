@@ -19,6 +19,21 @@
       <b>⚠️ 設定存起來了，但連不上</b>
       {{ conn.last_error }}
     </div>
+  {% endif %}
+
+  {% if conn and conn.workspace.error %}
+    <div class="status bad">
+      <b>⚠️ 專案根目錄有問題</b>
+      {{ conn.workspace.error }} —— 在修好之前不能產生規格。
+    </div>
+  {% elif conn and conn.workspace.warning %}
+    <div class="status none">
+      <b>⚠️ {{ conn.workspace.warning }}</b>
+      建議先 <code>git init</code>，出事才回得去。
+    </div>
+  {% endif %}
+
+  {% if False %}
   {% else %}
     <div class="status none">
       <b>還沒設定</b>
@@ -58,6 +73,17 @@
       <span class="hint">要被 DevLoop 管理的 Jira 專案，例如 <code>KAN</code></span>
       <input id="project" name="project" required
              value="{{ conn.jira_project if conn else '' }}" placeholder="KAN">
+    </div>
+
+    <div class="field">
+      <label for="workspace">專案根目錄</label>
+      <span class="hint">
+        被 DevLoop 管理的那個 repo 在你電腦上的路徑。
+        <b>claude 子行程只能在這個目錄底下動作</b> —— 這是它唯一的作用範圍限制。
+      </span>
+      <input id="workspace" name="workspace" required
+             value="{{ conn.workspace.path if conn else '' }}"
+             placeholder="/Users/你/專案/repo">
     </div>
 
     <div class="actions">

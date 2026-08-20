@@ -24,7 +24,9 @@ make migrate
 make dev                  # 服務跑在本機（才叫得到本地的 claude）
 ```
 
-Jira 憑證**不放在 .env** —— 開 <http://localhost:8100/settings> 填，存進資料庫前會加密。
+Jira 憑證與**被管理的專案**都不放在 .env —— 開 <http://localhost:8100/settings> 填：
+站台、帳號、API token（加密存放）、專案代號、專案根目錄。
+換一個要管理的專案（例如從 DEV 切到 KAN）只要改這一頁，不用編輯檔案也不用重啟。
 
 ```bash
 make ci                   # ruff + mypy strict + import-linter + pytest

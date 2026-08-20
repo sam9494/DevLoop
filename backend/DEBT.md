@@ -10,7 +10,7 @@
 | background worker 具備寫檔權限（acceptEdits），但第一刀沒有用到該權限的工作 | Sam 於 IMPL-01 決定，避免第二刀再開一次權限 | 做 ④ 產程式時改為每個 job 開獨立 git branch |
 | worker 是進程內 thread，無重試佇列 | 併發量是「一次一張卡」 | 同時跑 >3 個 job 或失敗率 >10% |
 | 骨架設定複製自 JobRadar，未共用 | 共用會把兩個專案綁死，且 DevLoop 要管理 JobRadar | 兩邊工具版本漂到互相打架時 |
-| 服務手動 `make dev` 啟動，無 launchd | 開發期要看 log | 開始每天實際使用時 |
+| 服務手動 `make dev` 啟動，無 launchd | 開發期要看 log | DEV-12 |
 | Postgres → Neo4j 雙寫沒有 transaction 保證 | 兩個資料庫本來就沒有跨庫交易；凍結時圖同步失敗只會提示，不回捲 | `make rebuild-graph` 已可從 edges 表重建；發現不一致 >1 次就自動化對帳 |
 | 導向訊息走 query string，不是 flash session | 單人本機，訊息不敏感 | 加登入時一起換成 session flash |
 | 單人、無登入（`OWNER_KEY = "sam"` 寫死） | `connections` 已是每人一列的形狀，加登入時只要把它換成 session 使用者，schema 不必動 | 第二個人要用的時候 |

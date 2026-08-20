@@ -194,6 +194,8 @@ class Connection(Base):
     jira_email: Mapped[str]
     jira_token_encrypted: Mapped[str]
     jira_project: Mapped[str]
+    # claude 子行程的 cwd —— 跟專案代號成對，換專案時一起改，不用編輯 .env
+    workspace_root: Mapped[str] = mapped_column(default="")
     jira_account_id: Mapped[str | None]  # 驗證成功時回填，證明憑證真的能用
     display_name: Mapped[str | None]
     verified_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)

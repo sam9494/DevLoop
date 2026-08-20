@@ -57,6 +57,7 @@ def client(session: Session, jira: FakeJira) -> Iterator[TestClient]:
         site="team.atlassian.net",
         email="s@x.com",
         project="KAN",
+        workspace="/tmp",
         token="tok",
         verifier=FakeJira(),
     )
@@ -234,6 +235,7 @@ def test_jira_failure_after_freezing_does_not_undo_the_freeze(
         site="t.atlassian.net",
         email="s@x.com",
         project="KAN",
+        workspace="/tmp",
         token="tok",
         verifier=FakeJira(),
     )

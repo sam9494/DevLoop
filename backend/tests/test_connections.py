@@ -3,7 +3,12 @@ from devloop.jira.client import FakeJira
 from devloop.jira.connections import get_connection, save_connection
 from tests.conftest import needs_db
 
-ARGS = {"site": "team.atlassian.net", "email": "sam@example.com", "project": "KAN"}
+ARGS = {
+    "site": "team.atlassian.net",
+    "email": "sam@example.com",
+    "project": "KAN",
+    "workspace": "/tmp",
+}
 
 
 @needs_db

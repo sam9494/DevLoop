@@ -125,6 +125,7 @@ def settings_save(
     site: Annotated[str, Form()],
     email: Annotated[str, Form()],
     project: Annotated[str, Form()],
+    workspace: Annotated[str, Form()],
     token: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     try:
@@ -134,6 +135,7 @@ def settings_save(
             site=site.strip(),
             email=email.strip(),
             project=project.strip().upper(),
+            workspace=workspace.strip(),
             token=token.strip() or None,
             verifier=verifier,
         )
@@ -233,10 +235,14 @@ def card_generate(key: str, session: SessionDep, conn: ConnDep) -> RedirectRespo
     card = session.scalar(select(Card).where(Card.key == key))
     if card is None:
         raise HTTPException(status_code=404, detail=f"沒有 {key} 這張卡")
+    view = to_view(conn)
+    if view.workspace.error:
+        return RedirectResponse(f"/?error={view.workspace.error}", status_code=303)
+
     service.enqueue_generation(
         session,
         card,
-        workspace=settings.workspace_root,
+        workspace=Path(conn.workspace_root),
         permission_mode="acceptEdits",
     )
     return RedirectResponse("/", status_code=303)
@@ -433,7 +439,7 @@ async def card_revise(  # type: ignore[no-untyped-def]
             report,
             section_n=section_n,
             reason=form.get("reason") or "",
-            workspace=settings.workspace_root,
+            workspace=Path(conn.workspace_root),
             permission_mode="acceptEdits",
         )
     except service.SpecError as exc:
