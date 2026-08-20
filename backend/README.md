@@ -2,7 +2,7 @@
 
 一張 Jira 卡進來 → 服務呼叫本地 Claude Code 產規格報告 → Sam 讀與答題 → 凍結 → 決策落庫並進圖譜 → 下一張卡吃得到。
 
-設計與決策紀錄在 `../../SpecGate/`（PRD、prototype、三輪選型 JSON）。
+設計與決策紀錄在 [`../docs/`](../docs/README.md)：PRD、兩份 prototype、三輪選型的題目頁與答案 JSON。
 
 ## 兩個 Jira 專案別搞混
 
@@ -38,7 +38,7 @@ make ci                   # ruff + mypy strict + import-linter + pytest
 /cards/{key} 規格頁 —— 讀報告、答題（題目穿插在相關段落底下）
              ↓ 必答題答完才解鎖
              凍結 → 版本鎖 v1.0、答案萃成決策寫進圖、Jira 卡移到「進行中」
-/cards/{key}/review.json   決策紀錄，格式與 SpecGate 那幾份一致
+/cards/{key}/review.json   決策紀錄，格式與 docs/decisions/*.json 一致
 ```
 
 沒有已驗證的 Jira 連線時，`/` 一律 307 導到 `/settings` —— 沒有憑證就拉不到卡，

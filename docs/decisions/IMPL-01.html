@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevLoop 實作報告 · 關鍵決策點</title>
+<style>
+  :root {
+    --bg:#f7f8fa; --card:#fff; --ink:#1a2333; --muted:#5b6577; --line:#e3e7ee;
+    --blue:#2563eb; --blue-soft:#eaf1fe; --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#dc2626; --red-soft:#fdecec; --amber:#d97706; --amber-soft:#fdf1e7;
+    --purple:#8b5cf6; --purple-soft:#f3eeff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink); line-height:1.85;
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    padding:30px 18px 190px;
+  }
+  .wrap { max-width:960px; margin:0 auto; }
+
+  header.card-head {
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:22px 26px; margin-bottom:22px; border-left:5px solid var(--amber);
+  }
+  .kline { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .key { font-family:var(--mono); font-weight:800; font-size:1.02rem; color:var(--blue); }
+  .chip { font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+  .chip.gate { background:var(--amber-soft); color:var(--amber); }
+  .chip.info { background:#eef1f6; color:var(--muted); }
+  h1 { font-size:1.28rem; line-height:1.5; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:.9rem; margin-top:8px; }
+
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px;
+            padding:24px 28px; margin-bottom:20px; }
+  section > h2 { font-size:1.12rem; margin-bottom:8px; display:flex; align-items:baseline; gap:10px; }
+  section > h2 .n { font-family:var(--mono); font-size:.75rem; color:#fff; background:var(--ink);
+                    border-radius:6px; padding:2px 8px; flex:0 0 auto; }
+  section.hot { border:2px solid var(--amber); background:#fffdf9; }
+  section.hot > h2 .n { background:var(--amber); }
+  section.opt2 { opacity:.97; border-style:dashed; }
+  .plain { font-size:.95rem; margin-bottom:6px; }
+  .plain b { background:linear-gradient(transparent 62%, #fde68a 62%); }
+  p { margin:9px 0; }
+  ul { margin:9px 0 9px 22px; } li { margin:4px 0; }
+  code { font-family:var(--mono); font-size:.86em; background:#f0f3f8; padding:1px 6px; border-radius:4px; }
+  pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:12px 14px;
+        overflow-x:auto; font-family:var(--mono); font-size:.76rem; line-height:1.62; margin:0; }
+  pre .c { color:#94a3b8; }
+  pre .g { color:var(--green); font-weight:700; }
+  pre .r { color:var(--red); font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:.86rem; margin:11px 0; }
+  th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:#f3f5f9; font-size:.8rem; }
+  .ok { color:var(--green); font-weight:700; }
+  .no { color:var(--red); font-weight:700; }
+  .callout { border-left:4px solid var(--blue); background:var(--blue-soft); border-radius:9px;
+             padding:12px 16px; margin:14px 0; font-size:.92rem; }
+  .callout.a { border-left-color:var(--amber); background:var(--amber-soft); }
+  .callout.r { border-left-color:var(--red); background:var(--red-soft); }
+
+  /* 對照樣本 */
+  .cmp { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+  .cmp.one { grid-template-columns:1fr; }
+  @media (max-width:720px){ .cmp { grid-template-columns:1fr; } }
+  .cmp .box { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:#fff; }
+  .cmp .box > .cap { font-size:.78rem; font-weight:800; padding:7px 12px; font-family:var(--mono);
+                     border-bottom:1px solid var(--line); }
+  .cmp .box.now > .cap { background:var(--red-soft); color:var(--red); }
+  .cmp .box.alt > .cap { background:var(--green-soft); color:#14532d; }
+  .cmp .box.neu > .cap { background:#f3f5f9; color:var(--muted); }
+  .cmp .box pre { border:0; border-radius:0; background:#fff; }
+  .cmp .box .why { font-size:.82rem; color:var(--muted); padding:9px 12px; border-top:1px dashed var(--line); }
+
+  /* 題目 */
+  .q { border:2px solid var(--blue); border-radius:12px; background:var(--blue-soft);
+       padding:16px 18px; margin:18px 0 0; }
+  .q.answered { border-color:var(--green); background:var(--green-soft); }
+  .q-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+  .q-id { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff;
+          background:var(--blue); border-radius:5px; padding:1px 8px; }
+  .q.answered .q-id { background:var(--green); }
+  .q-title { font-weight:700; font-size:1rem; }
+  .q-opt-tag { font-size:.7rem; color:var(--muted); font-family:var(--mono); }
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  label.opt { display:flex; gap:11px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
+              border-radius:9px; padding:11px 13px; cursor:pointer; transition:all .16s; }
+  label.opt:hover { border-color:var(--blue); }
+  label.opt.sel { border-color:var(--green); background:#f6fdf8; box-shadow:0 0 0 3px var(--green-soft); }
+  label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
+  .opt-b { flex:1; }
+  .opt-t { font-weight:600; font-size:.93rem; }
+  .opt-t .star { color:var(--amber); font-weight:800; }
+  .opt-d { font-size:.83rem; color:var(--muted); line-height:1.6; margin-top:3px; }
+  .opt-cost { font-size:.8rem; color:var(--red); margin-top:3px; }
+  textarea, input.note {
+    width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line); border-radius:9px;
+    padding:10px 12px; background:#fff; resize:vertical; font-family:inherit;
+  }
+  textarea:focus, input.note:focus { outline:none; border-color:var(--blue); }
+  .note-wrap { margin-top:9px; }
+  .note-wrap span { font-size:.78rem; color:var(--muted); display:block; margin-bottom:3px; }
+
+  .gate-bar { position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+    border-top:1px solid var(--line); box-shadow:0 -4px 18px rgba(26,35,51,.09);
+    padding:13px 18px; backdrop-filter:blur(8px); z-index:50; }
+  .gate-inner { max-width:960px; margin:0 auto; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .prog { font-size:.86rem; color:var(--muted); font-family:var(--mono); }
+  .prog b { color:var(--ink); }
+  .spacer { flex:1; }
+  .gate-bar button { font:inherit; font-size:.92rem; font-weight:700; padding:10px 20px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; transition:all .16s; }
+  .gate-bar button:hover:not(:disabled) { border-color:var(--blue); }
+  .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
+  #save { background:var(--ink); color:#fff; border-color:var(--ink); }
+  #save:hover:not(:disabled) { background:#0f1725; }
+  .draft-hint { font-size:.76rem; color:var(--muted); font-family:var(--mono); }
+  .saved-msg { max-width:960px; margin:9px auto 0; font-size:.86rem; color:var(--green);
+               display:none; background:var(--green-soft); border-radius:9px; padding:9px 13px; }
+  .saved-msg.show { display:block; }
+  label.opt.none { border-style:dashed; }
+  label.opt.none.sel { border-color:var(--amber); background:#fffdf6; box-shadow:0 0 0 3px var(--amber-soft); }
+  .note-wrap.must span { color:var(--amber); font-weight:700; }
+  .note-wrap.must input.note { border-color:var(--amber); background:#fffdf6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="card-head">
+    <div class="kline">
+      <span class="key">IMPL-01 · §3</span>
+      <span class="chip gate">待拍板</span>
+      <span class="chip info">DevLoop 第一刀</span>
+    </div>
+    <h1>實作報告的關鍵決策點 —— 這五題定了我就開工</h1>
+    <div class="sub">
+      2026-08-19 · 其餘七節（目標／現況／檔案清單／介面草稿／測試策略／驗收對照／風險與債）在聊天視窗。<br>
+      <b>已定的不再問</b>：DevLoop 全閉環、Postgres + Neo4j、背景佇列呼叫本地 Claude Code、
+      DB 進 Docker 服務跑本機、自建 Jira client、slug id、以上皆非（說明必填）。
+    </div>
+  </header>
+
+  <div id="body"></div>
+
+</div>
+
+<div class="gate-bar">
+  <div class="gate-inner">
+    <span class="prog">已答 <b id="done">0</b> / <span id="total">0</span> 題　<span class="draft-hint" id="draft"></span></span>
+    <span class="spacer"></span>
+    <button type="button" id="save">儲存選擇</button>
+  </div>
+  <div class="saved-msg" id="saved"></div>
+</div>
+
+<script>
+const DOC_VERSION = "2026-08-19T17:30:00+08:00";
+
+const DECISIONS = [
+{
+  id:"first-cut", n:1, hot:true, req:true,
+  title:"第一刀切多大",
+  plain:`DevLoop 有六個階段。<b>第一刀不可能六個一起做完</b> —— 問題是切在哪裡才是一個「能自己站著」的東西。`,
+  body:`
+  <div class="cmp one">
+    <div class="box alt"><div class="cap">A · 切在「凍結規格」（①②③ + Jira 回寫）</div><pre>① 服務定時拉 Jira 未完成的卡
+② 呼叫本地 claude 產規格草稿 → 存 Postgres
+   你開頁面讀、答題（穿插式）、可要求改某一節
+③ 你按凍結 → 版本 v1.0 鎖住 → 決策落庫
+   → 服務用 Jira API 把卡移到「進行中」
+
+<span class="g">做完你就有一個真的能天天用的東西：
+KAN-16 到 KAN-21 全部走這條路開工。</span>
+<span class="c">④⑤⑥（產程式、部署、知識圖譜）留第二刀。</span></pre>
+      <div class="why">這一刀等於「SpecGate 的全部價值 + 閉環的前半」。約 <b>10–14 天</b>。</div></div>
+  </div>
+  <div class="cmp one">
+    <div class="box neu"><div class="cap">B · 切在「跑得動一次完整閉環」（①→⑥ 各做最薄的一層）</div><pre>六個階段都做，但每個都只做最小可動：
+④ 只呼叫一次 claude -p 產測試檔，不管品質
+⑤ 只呼叫 gh workflow run，不管結果
+⑥ 只寫三個節點進 Neo4j
+
+<span class="g">demo 效果最完整，devloop.html 那張圖真的會動</span>
+<span class="r">每個階段都薄到不能實際使用，
+六個半成品要同時維護；約 4–6 週</span></pre></div>
+  </div>
+  <div class="cmp one">
+    <div class="box neu"><div class="cap">C · 切在「服務骨架」（只做 ① + 資料層）</div><pre>只做：Jira 同步 + Postgres schema + 一頁卡片列表
+規格報告還是我在對話裡手寫給你
+
+<span class="g">最快，3–5 天就能看到東西</span>
+<span class="r">做完你手上的流程沒有任何改變 ——
+還是「Claude 在聊天視窗給報告」</span></pre></div>
+  </div>
+  <div class="callout a">我建議 A 的理由：<b>它是最小的「做完就能取代現在做法」的切法</b>。
+  B 的六個半成品沒有一個能實際使用，而 C 做完你的工作流完全沒變。
+  你剩下的 Phase 0 卡（KAN-16 到 KAN-21）正好可以當 A 的實際使用者。</div>`,
+  q:"第一刀做到哪裡",
+  options:[
+    {v:"a-freeze", star:true, t:"A · ①②③ + Jira 回寫，做到「凍結規格」為止",
+     d:"做完就能取代現在的工作流，KAN-16 起每張卡都走它。",
+     cost:"代價：④⑤⑥ 還不能動，devloop.html 的閉環動畫暫時只是願景"},
+    {v:"b-thin-loop", t:"B · 六階段各做最薄一層，先讓閉環轉一圈",
+     d:"展示效果完整。",
+     cost:"代價：4–6 週，而且六個階段都薄到不堪用，要同時維護六個半成品"},
+    {v:"c-skeleton", t:"C · 只做服務骨架與 Jira 同步",
+     d:"3–5 天看得到東西。",
+     cost:"代價：做完你的實際工作流沒有任何改變"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"where-lives", n:2, hot:true, req:true,
+  title:"DevLoop 的程式住在哪",
+  plain:`JobRadar 的 backend 已經有一整套可用的骨架（FastAPI + SQLAlchemy + Alembic + strict mypy + import-linter + Makefile）。
+         問題是 DevLoop 要<b>共用那個 repo，還是自己開一個</b>。`,
+  body:`
+  <div class="cmp">
+    <div class="box alt"><div class="cap">A · 獨立專案，複製骨架</div><pre>JobHunting/
+  JobRadar/backend/     ← 產品
+  DevLoop/backend/      ← 工具（新）
+    pyproject.toml      ← 抄 JobRadar 的設定
+    Makefile            ← 同一套 ci 指令
+    docker-compose.yml  ← 自己的 pg + neo4j
+
+<span class="g">DevLoop 掛掉不會影響 JobRadar
+兩邊的 migration 不會打架
+DevLoop 之後要給別人用，直接搬走</span></pre></div>
+    <div class="box neu"><div class="cap">B · 塞進 JobRadar/backend</div><pre>JobRadar/backend/src/jobradar/
+  ingestion/  enrichment/  matching/
+  devloop/    ← 新模組
+
+<span class="g">共用 DB 連線、設定、CI</span>
+<span class="r">import-linter 的模組邊界要重寫
+JobRadar 的 alembic 會混進 DevLoop 的表
+「找工作的產品」跟「開發工具」黏在一起</span></pre></div>
+  </div>
+  <div class="callout">注意一件事：<b>DevLoop 是要拿來管理 JobRadar 的開發的</b>。
+  如果它住在 JobRadar 裡面，它就得管理自己 —— 每次改 DevLoop 都會動到被它管理的那個 repo。</div>`,
+  q:"程式碼放哪",
+  options:[
+    {v:"standalone", star:true, t:"獨立專案 DevLoop/backend，複製 JobRadar 的骨架設定",
+     d:"同一套 Makefile / ruff / mypy / import-linter 規則，但各自獨立的 DB 與 migration。",
+     cost:"代價：骨架設定要複製一份，之後兩邊的工具版本可能會漂"},
+    {v:"inside-jobradar", t:"當成 JobRadar 的一個模組",
+     d:"共用連線、設定與 CI。",
+     cost:"代價：邊界規則要重寫、migration 會混在一起、工具會管理到自己"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"neo4j-when", n:3, req:true,
+  title:"Neo4j 什麼時候真的接上",
+  plain:`你已經決定用 Neo4j，這題<b>不是問要不要</b>，是問<b>第一刀就接還是第二刀再接</b>。`,
+  body:`
+  <pre>時間軸上的實際狀況：
+
+第一刀做完（①②③）  → 你跑完第一張卡，圖上有幾條邊？
+                        (:KAN-16)-[:PRODUCED]-&gt;(:Decision D-001)
+                        ...就這樣。<span class="c">沒有跨卡關聯，因為只有一張卡。</span>
+
+第二刀（⑥ harvest） → 這時候才會出現真正的圖查詢需求：
+                        「KAN-17 開卡時，撈出所有跟它相關的舊決策與風險」
+                        <span class="g">← 這才是 Neo4j 存在的理由</span></pre>
+  <div class="cmp">
+    <div class="box alt"><div class="cap">A · 第一刀先寫 Postgres 的 edges 表</div><pre>edges(from_id, to_id, kind, created_at)
+
+節點與邊的<b>形狀</b>從第一天就正確，
+只是暫時住在關聯式表裡。
+
+第二刀接 Neo4j 時：
+  SELECT * FROM edges → 一支腳本灌進去
+<span class="g">灌進去是一次性的，不用改任何既有程式</span></pre></div>
+    <div class="box neu"><div class="cap">B · 第一刀就把 Neo4j 一起接上</div><pre>docker compose 加 neo4j
+多一個 driver、多一套連線設定
+每次寫入要同步兩邊
+
+<span class="g">不用做第二次</span>
+<span class="r">第一刀多 2–3 天，而且這段期間
+圖裡只有幾個孤立節點，沒有查詢會用到它</span></pre></div>
+  </div>`,
+  q:"Neo4j 的接入時機",
+  options:[
+    {v:"edges-first", star:true, t:"第一刀先用 Postgres 的 edges 表，第二刀（harvest）再灌進 Neo4j",
+     d:"資料形狀從第一天就是圖，搬家是一支腳本的事。第一刀不用多養一個資料庫。",
+     cost:"代價：第一刀期間沒有 Cypher 查詢（但那期間也沒有需要它的查詢）"},
+    {v:"neo4j-now", t:"第一刀就接上 Neo4j",
+     d:"一次到位，不用做第二次。",
+     cost:"代價：第一刀多 2–3 天；那段期間圖裡是孤立節點，沒有查詢用得到"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"page-render", n:4, req:true,
+  title:"規格頁面誰來畫",
+  plain:`你要讀報告、答題的那一頁 —— 現在是我手寫的靜態 HTML。變成服務之後，這頁由誰產生。`,
+  body:`
+  <div class="cmp">
+    <div class="box alt"><div class="cap">A · 後端 Jinja 直接渲染</div><pre>GET /cards/KAN-16
+  → FastAPI 讀 DB → Jinja 套版 → 回一整頁 HTML
+
+POST /cards/KAN-16/answers
+  → 存答案 → redirect 回同一頁
+
+<span class="g">一個服務、沒有 build、沒有 node_modules
+現在那兩份 prototype 的 HTML 幾乎可以直接變成樣板</span>
+<span class="c">互動只能靠表單送出與少量原生 JS</span></pre></div>
+    <div class="box neu"><div class="cap">B · 後端出 JSON + 前端 SPA</div><pre>GET /api/cards/KAN-16 → JSON
+React/Vue 前端自己渲染
+
+<span class="g">互動最順（即時存草稿、局部更新）</span>
+<span class="r">多一整個前端專案要建與維護
+單人用的工具，收益很低</span></pre></div>
+  </div>
+  <div class="callout">你的 prototype 已經證明了：<b>純 HTML + 一點原生 JS 就足夠</b>。
+  草稿自動存、進度條、以上皆非必填 —— 那些都是在沒有任何框架的情況下做出來的。</div>`,
+  q:"頁面的產生方式",
+  options:[
+    {v:"jinja", star:true, t:"後端 Jinja 渲染，沿用 prototype 的 HTML 當樣板",
+     d:"一個服務就夠。你現在寫的那些互動全部保留，只是資料改從 DB 來。",
+     cost:"代價：複雜互動要自己寫原生 JS（但目前需要的都已經寫出來了）"},
+    {v:"spa", t:"後端出 JSON API + 前端 SPA",
+     d:"互動體驗最好，之後要做團隊版比較容易擴。",
+     cost:"代價：多一個前端專案；單人工具的投報率很低"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"claude-permission", n:5, hot:true, req:true,
+  title:"服務呼叫 Claude Code 時，給它多大權限",
+  plain:`背景 worker 會執行 <code>claude -p</code>。<b>這一題決定它能不能動你的檔案</b>，答錯的後果是自動化系統在無人看管時改壞程式碼。`,
+  body:`
+  <pre>claude -p "..." --permission-mode <span class="g">?</span>
+
+  plan          只讀、只出計畫，一個字都不寫
+  acceptEdits   自動接受檔案編輯
+  bypassPermissions  全部放行（含執行指令）</pre>
+  <div class="cmp">
+    <div class="box alt"><div class="cap">A · 第一刀只給唯讀（plan）</div><pre>worker 執行的工作只有一種：
+  「讀 Jira 卡 + 讀程式碼現況 → 產出規格報告」
+
+這件事<span class="g">本來就不需要寫入任何檔案</span>。
+報告文字回到 Postgres，不落地成檔案。
+
+等第二刀真的要做 ④ 產程式時，
+再單獨決定那條路徑的權限。</pre></div>
+    <div class="box now"><div class="cap">B · 直接給 acceptEdits</div><pre>worker 可以自動改 JobRadar 的程式碼
+
+<span class="r">第一刀根本還沒有「要它寫程式」的工作，
+但權限已經開著。
+背景執行 + 自動改檔 + 沒人看著
+= 出事時你不會當場知道。</span></pre></div>
+  </div>
+  <div class="callout r">這題我態度比較硬：<b>第一刀沒有任何需要寫檔的工作</b>，權限就不該開。
+  等 ④ 真的要做的時候，那是一個獨立的決策，而且應該配上「產出先進暫存分支」之類的保護。</div>`,
+  q:"Claude Code 的權限模式",
+  options:[
+    {v:"plan-only", star:true, t:"第一刀只給 plan（唯讀），完全不能寫檔",
+     d:"第一刀的工作只有「產規格報告」，本來就不需要寫入。",
+     cost:"代價：第二刀要做自動實作時，要再單獨開一次權限決策"},
+    {v:"accept-edits", t:"直接給 acceptEdits，讓它以後能自己改檔",
+     d:"之後做 ④ 不用再改設定。",
+     cost:"代價：現在沒有用到的權限先開著，背景無人看管時改壞檔案不會當場發現"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+}
+];
+
+/* ============================================================
+   渲染（跟 TECH-001 同一套，多了「以上皆非必填說明」的規則）
+   ============================================================ */
+const LSKEY = "devloop-impl-01-v1";
+const answers = {};
+
+function isNone(d, v) {
+  const o = d.options.filter(x => x.v === v)[0];
+  return !!(o && o.none);
+}
+function isDone(d) {
+  const a = answers[d.id];
+  if (!a || !a.choice) return false;
+  if (isNone(d, a.choice)) return !!(a.note && a.note.trim());
+  return true;
+}
+
+function optHTML(d, o) {
+  return '<label class="opt' + (o.none ? ' none' : '') + '" data-q="' + d.id + '" data-v="' + o.v + '">'
+    + '<input type="radio" name="q_' + d.id + '" value="' + o.v + '">'
+    + '<span class="opt-b">'
+    +   '<span class="opt-t">' + (o.star ? '<span class="star">★ </span>' : '') + o.t + '</span>'
+    +   '<span class="opt-d">' + o.d + '</span>'
+    +   (o.cost ? '<span class="opt-cost">' + o.cost + '</span>' : '')
+    + '</span></label>';
+}
+
+function render() {
+  let h = "";
+  DECISIONS.forEach(d => {
+    h += '<section class="' + (d.hot ? 'hot' : '') + '" id="s-' + d.id + '">'
+      +  '<h2><span class="n">' + String(d.n).padStart(2, '0') + '</span>' + d.title + '</h2>'
+      +  '<div class="plain">' + d.plain + '</div>'
+      +  d.body
+      +  '<div class="q" data-qid="' + d.id + '">'
+      +    '<div class="q-head"><span class="q-id">' + d.id + '</span>'
+      +      '<span class="q-title">' + d.q + '</span></div>'
+      +    '<div class="opts">' + d.options.map(o => optHTML(d, o)).join('') + '</div>'
+      +    '<div class="note-wrap" data-nw="' + d.id + '"><span data-nl="' + d.id + '">備註（可留空）</span>'
+      +      '<input class="note" data-note="' + d.id + '" placeholder="有條件、有疑問就寫這裡"></div>'
+      +  '</div></section>';
+  });
+  h += '<section><h2><span class="n">06</span>其他想法</h2>'
+    +  '<div class="plain">還有什麼我沒問到、或你想先看到的東西。</div>'
+    +  '<div class="q" data-qid="free"><div class="q-head"><span class="q-id">free</span>'
+    +  '<span class="q-title">補充</span></div>'
+    +  '<textarea id="freetext" rows="4" placeholder="例：驗收條件我想加一條 —— 服務掛掉時 Jira 不能被改到一半。"></textarea>'
+    +  '</div></section>';
+  document.getElementById('body').innerHTML = h;
+}
+
+function paint() {
+  DECISIONS.forEach(d => {
+    const a = answers[d.id] || {};
+    const box = document.querySelector('.q[data-qid="' + d.id + '"]');
+    box.classList.toggle('answered', isDone(d));
+    box.querySelectorAll('label.opt').forEach(l => {
+      l.classList.toggle('sel', l.dataset.v === a.choice);
+    });
+    // 選了「以上皆非」→ 備註變必填
+    const must = !!(a.choice && isNone(d, a.choice));
+    const nw = document.querySelector('[data-nw="' + d.id + '"]');
+    nw.classList.toggle('must', must);
+    document.querySelector('[data-nl="' + d.id + '"]').textContent =
+      must ? '必填 —— 你要的是什麼？' : '備註（可留空）';
+    document.querySelector('input[data-note="' + d.id + '"]').placeholder =
+      must ? '寫下你真正要的做法，我照這個做' : '有條件、有疑問就寫這裡';
+  });
+  const done = DECISIONS.filter(isDone).length;
+  document.getElementById('done').textContent = done;
+  document.getElementById('total').textContent = DECISIONS.length;
+}
+
+function saveDraft() {
+  localStorage.setItem(LSKEY, JSON.stringify({
+    v: DOC_VERSION, answers, free: document.getElementById('freetext').value,
+    at: new Date().toISOString()
+  }));
+  document.getElementById('draft').textContent =
+    '· 草稿已存 ' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+function loadDraft() {
+  const s = localStorage.getItem(LSKEY); if (!s) return;
+  try {
+    const d = JSON.parse(s); if (d.v !== DOC_VERSION) return;
+    Object.assign(answers, d.answers || {});
+    Object.keys(answers).forEach(id => {
+      const a = answers[id];
+      if (a.choice) {
+        const el = document.querySelector('input[name="q_' + id + '"][value="' + a.choice + '"]');
+        if (el) el.checked = true;
+      }
+      if (a.note) {
+        const n = document.querySelector('input[data-note="' + id + '"]');
+        if (n) n.value = a.note;
+      }
+    });
+    if (d.free) document.getElementById('freetext').value = d.free;
+  } catch (e) { /* 草稿壞掉就忽略 */ }
+}
+
+function buildPayload() {
+  return {
+    schema_version: 1,
+    doc: "devloop-impl-01-decisions",
+    title: "DevLoop 實作報告 IMPL-01 §3 關鍵決策點",
+    doc_version: DOC_VERSION,
+    follows: "specgate-tech-choices-2",
+    reviewed_at: new Date().toISOString(),
+    reviewer: "sam",
+    answers: DECISIONS.map(d => {
+      const a = answers[d.id] || {};
+      const o = d.options.filter(x => x.v === a.choice)[0];
+      return {
+        id: d.id,
+        question: d.q,
+        choice: a.choice || null,
+        choice_label: o ? o.t : null,
+        none_of_above: !!(a.choice && isNone(d, a.choice)),
+        answered: isDone(d),
+        note: a.note || ""
+      };
+    }),
+    free_text: document.getElementById('freetext').value
+  };
+}
+
+render();
+
+document.addEventListener('change', e => {
+  const r = e.target.closest('input[type=radio]');
+  if (!r) return;
+  const id = r.closest('.q').dataset.qid;
+  answers[id] = answers[id] || {};
+  answers[id].choice = r.value;
+  paint(); saveDraft();
+});
+
+document.addEventListener('input', e => {
+  const n = e.target.closest('input.note');
+  if (n) {
+    const id = n.dataset.note;
+    answers[id] = answers[id] || {};
+    answers[id].note = n.value;
+    paint(); saveDraft(); return;
+  }
+  if (e.target.id === 'freetext') saveDraft();
+});
+
+document.getElementById('save').onclick = () => {
+  const json = JSON.stringify(buildPayload(), null, 2);
+
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json); copied = true; }
+  } catch (err) { copied = false; }
+  if (!copied) {
+    const ta = document.createElement('textarea');
+    ta.value = json; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { copied = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+  }
+
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'impl-01-decisions.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+
+  const miss = DECISIONS.filter(d => !isDone(d));
+  const needNote = miss.filter(d => answers[d.id] && answers[d.id].choice && isNone(d, answers[d.id].choice));
+  const m = document.getElementById('saved');
+  m.innerHTML = '✅ 已存成 <code>~/Downloads/impl-01-decisions.json</code>'
+    + (copied ? '，同時複製到剪貼簿' : '')
+    + (needNote.length ? '<br>⚠️ 第 ' + needNote.map(d => d.n).join('、') + ' 題選了「以上皆非」但還沒寫說明 —— 那題等於沒答。' : '')
+    + (miss.length && !needNote.length ? '<br>⚠️ 第 ' + miss.map(d => d.n).join('、') + ' 題還沒選。' : '')
+    + '<br>跟我說一句「<b>決策點定了</b>」，我讀檔就開工。';
+  m.classList.add('show');
+};
+
+loadDraft(); paint();
+
+</script>
+</body>
+</html>

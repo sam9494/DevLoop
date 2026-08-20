@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "doc": "devloop-impl-01-decisions",
+  "title": "DevLoop 實作報告 IMPL-01 §3 關鍵決策點",
+  "doc_version": "2026-08-19T17:30:00+08:00",
+  "follows": "specgate-tech-choices-2",
+  "reviewed_at": "2026-08-19T09:10:39.387Z",
+  "reviewer": "sam",
+  "answers": [
+    {
+      "id": "first-cut",
+      "question": "第一刀做到哪裡",
+      "choice": "a-freeze",
+      "choice_label": "A · ①②③ + Jira 回寫，做到「凍結規格」為止",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "where-lives",
+      "question": "程式碼放哪",
+      "choice": "none",
+      "choice_label": "以上皆非 —— 我要的是別的",
+      "none_of_above": true,
+      "answered": true,
+      "note": "folder是DevLoop/Backend 沒錯 只是程式語言 不一定要python和dotnet 你選擇一個適合的"
+    },
+    {
+      "id": "neo4j-when",
+      "question": "Neo4j 的接入時機",
+      "choice": "neo4j-now",
+      "choice_label": "第一刀就接上 Neo4j",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "page-render",
+      "question": "頁面的產生方式",
+      "choice": "jinja",
+      "choice_label": "後端 Jinja 渲染，沿用 prototype 的 HTML 當樣板",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "claude-permission",
+      "question": "Claude Code 的權限模式",
+      "choice": "accept-edits",
+      "choice_label": "直接給 acceptEdits，讓它以後能自己改檔",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    }
+  ],
+  "free_text": ""
+}

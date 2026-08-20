@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "doc": "specgate-tech-choices-2",
+  "title": "SpecGate 技術選型閘門 TECH-002",
+  "doc_version": "2026-08-19T17:00:00+08:00",
+  "follows": "specgate-tech-choices",
+  "reviewed_at": "2026-08-19T09:02:15.797Z",
+  "reviewer": "sam",
+  "answers": [
+    {
+      "id": "db-choice",
+      "question": "資料庫怎麼配",
+      "choice": "pg-neo4j",
+      "choice_label": "Postgres 主庫 + Neo4j 圖層",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "claude-invoke",
+      "question": "服務呼叫 Claude Code 的方式",
+      "choice": "job-queue",
+      "choice_label": "丟進工作佇列，背景跑，前端輪詢進度",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "neo4j-run",
+      "question": "Neo4j 怎麼跑",
+      "choice": "docker",
+      "choice_label": "Docker Compose 跑在本機",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    },
+    {
+      "id": "service-run",
+      "question": "服務的啟動方式",
+      "choice": "manual",
+      "choice_label": "DB 進 Docker，服務跑本機（開發期手動 make dev）",
+      "none_of_above": false,
+      "answered": true,
+      "note": "口頭修正 2026-08-19：服務不要進 Docker，跑本機才叫得到本地的 claude。取代原本選的 all-docker。"
+    },
+    {
+      "id": "none-of-above",
+      "question": "題目要不要加「以上皆非」",
+      "choice": "none-option",
+      "choice_label": "每題都加「以上皆非」，選了就必須寫說明",
+      "none_of_above": false,
+      "answered": true,
+      "note": ""
+    }
+  ],
+  "free_text": "",
+  "revised_at": "2026-08-19T17:15:00+08:00",
+  "revision_note": "service-run 由 all-docker 改為「DB 進 Docker、服務跑本機」，主機端 runner 橋接因此不需要"
+}

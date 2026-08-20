@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevLoop — 閉環開發系統 Prototype</title>
+<style>
+  :root {
+    --bg:#f5f6f9; --card:#fff; --ink:#1a2333; --muted:#5b6577; --line:#e3e7ee;
+    --blue:#2563eb; --blue-soft:#eaf1fe; --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#dc2626; --red-soft:#fdecec; --amber:#d97706; --amber-soft:#fdf1e7;
+    --purple:#8b5cf6; --purple-soft:#f3eeff; --teal:#0d9488; --teal-soft:#e6f7f5;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--ink); line-height:1.7;
+         font-family:"PingFang TC","Noto Sans TC",system-ui,sans-serif; }
+  button { font:inherit; cursor:pointer; }
+  code { font-family:var(--mono); font-size:.86em; background:#f0f3f8; padding:1px 5px; border-radius:4px; }
+
+  .app { display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
+  @media (max-width:900px){ .app{grid-template-columns:1fr} .rail{position:static!important;height:auto!important} }
+  .rail { background:#111827; color:#cbd5e1; padding:22px 16px; position:sticky; top:0; height:100vh; overflow:auto; }
+  .rail h1 { font-size:1.05rem; color:#fff; letter-spacing:-.01em; }
+  .rail .tagline { font-size:.72rem; color:#7c8aa0; margin:2px 0 20px; font-family:var(--mono); }
+  .step { display:flex; gap:11px; padding:9px 10px; border-radius:9px; margin-bottom:3px; transition:all .25s; }
+  .step .dot { width:22px; height:22px; border-radius:50%; background:#1f2937; color:#7c8aa0;
+               display:grid; place-items:center; font-size:.72rem; font-weight:800; flex:0 0 auto; transition:all .25s; }
+  .step .t { font-size:.83rem; line-height:1.35; }
+  .step .t small { display:block; color:#6b7a90; font-size:.7rem; }
+  .step.done .dot { background:var(--green); color:#fff; }
+  .step.on { background:#1e293b; }
+  .step.on .dot { background:var(--blue); color:#fff; box-shadow:0 0 0 4px rgba(37,99,235,.25); }
+  .step.on .t { color:#fff; font-weight:700; }
+  .loopmark { font-size:.7rem; color:#6b7a90; text-align:center; padding:6px 0; font-family:var(--mono); }
+  .railcard { margin-top:20px; border-top:1px solid #1f2937; padding-top:14px; }
+  .railcard .l { font-size:.7rem; color:#6b7a90; font-family:var(--mono); }
+  .railcard .k { font-size:.82rem; color:#fff; font-weight:700; }
+  .railcard .s { font-size:.72rem; color:#7c8aa0; line-height:1.4; }
+
+  main { padding:26px 30px 70px; max-width:1080px; }
+  .crumb { font-size:.78rem; color:var(--muted); font-family:var(--mono); margin-bottom:6px; }
+  h2.title { font-size:1.45rem; letter-spacing:-.01em; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:.93rem; margin-bottom:22px; }
+
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:13px; padding:20px 22px; margin-bottom:16px; }
+  .panel h3 { font-size:1rem; margin-bottom:3px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .panel .hint { font-size:.82rem; color:var(--muted); margin-bottom:12px; }
+
+  .chip { font-size:.7rem; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .chip.b{background:var(--blue-soft);color:var(--blue)} .chip.g{background:var(--green-soft);color:var(--green)}
+  .chip.a{background:var(--amber-soft);color:var(--amber)} .chip.p{background:var(--purple-soft);color:var(--purple)}
+  .chip.t{background:var(--teal-soft);color:var(--teal)} .chip.gr{background:#eef1f6;color:var(--muted)}
+
+  .jcard { border:1.5px solid var(--line); border-radius:11px; padding:14px 16px; margin-bottom:10px;
+           background:#fcfdff; transition:all .18s; }
+  .jcard:hover { border-color:var(--blue); }
+  .jcard .k { font-family:var(--mono); font-weight:800; color:var(--blue); font-size:.85rem; }
+  .jcard .s { font-weight:600; margin:3px 0 6px; }
+  .kg-hit { font-size:.8rem; color:#0f766e; background:var(--teal-soft); border-radius:7px; padding:7px 11px; margin-top:8px; }
+
+  .sec { border:1px solid var(--line); border-radius:11px; margin-bottom:11px; overflow:hidden; }
+  .sec-h { display:flex; align-items:center; gap:9px; padding:10px 14px; background:#f7f9fc; border-bottom:1px solid var(--line); }
+  .sec-h .n { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff; background:var(--ink); border-radius:5px; padding:1px 7px; }
+  .sec-h .ttl { font-weight:700; font-size:.93rem; flex:1; }
+  .sec-b { padding:13px 16px; font-size:.91rem; white-space:pre-wrap; cursor:text; transition:background .16s; }
+  .sec-b:hover { background:#fafcff; }
+  .sec-b .editcue { color:var(--blue); font-size:.75rem; opacity:0; transition:opacity .16s; float:right; }
+  .sec-b:hover .editcue { opacity:1; }
+  .sec.edited { border-color:var(--amber); }
+  .sec.edited .sec-h { background:var(--amber-soft); }
+  textarea.edit { width:100%; min-height:130px; font:inherit; font-size:.91rem; border:2px solid var(--blue);
+                  border-radius:9px; padding:11px 13px; resize:vertical; outline:none; }
+  .edit-actions { display:flex; gap:8px; padding:0 16px 13px; }
+
+  .btn { padding:7px 15px; border-radius:8px; border:1.5px solid var(--line); background:#fff; font-size:.86rem; font-weight:600; transition:all .16s; }
+  .btn:hover:not(:disabled){ border-color:var(--blue); }
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.green{background:var(--green);border-color:var(--green);color:#fff}
+  .btn.amber{background:var(--amber);border-color:var(--amber);color:#fff}
+  .btn.purple{background:var(--purple);border-color:var(--purple);color:#fff}
+  .btn.teal{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.lg{padding:11px 22px;font-size:.94rem}
+
+  .q { border:2px solid var(--blue); background:var(--blue-soft); border-radius:11px; padding:14px 16px; margin-bottom:11px; }
+  .q.done { border-color:var(--green); background:var(--green-soft); }
+  .q-h { display:flex; gap:9px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  .q-h .id { font-family:var(--mono); font-size:.68rem; font-weight:800; color:#fff; background:var(--blue); border-radius:5px; padding:1px 7px; }
+  .q.done .q-h .id { background:var(--green); }
+  .q-h .qt { font-weight:700; font-size:.94rem; flex:1; }
+  .opts { display:flex; flex-direction:column; gap:7px; }
+  label.opt { display:flex; gap:10px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
+              border-radius:9px; padding:9px 12px; cursor:pointer; transition:all .16s; }
+  label.opt:hover { border-color:var(--blue); }
+  label.opt.sel { border-color:var(--green); background:#f6fdf8; }
+  label.opt input { margin-top:5px; accent-color:var(--green); }
+  .opt-t { font-weight:600; font-size:.89rem; }
+  .opt-d { font-size:.8rem; color:var(--muted); }
+  .yn { display:flex; gap:9px; }
+  .yn button { flex:1; padding:9px; border-radius:9px; border:1.5px solid var(--line); background:#fff; font-weight:700; font-size:.88rem; }
+  .yn button.y { border-color:var(--green); background:var(--green-soft); color:#14532d; }
+  .yn button.n { border-color:var(--red); background:var(--red-soft); color:var(--red); }
+  textarea.free { width:100%; font:inherit; font-size:.89rem; border:1.5px solid var(--line);
+                  border-radius:9px; padding:9px 12px; resize:vertical; outline:none; }
+  textarea.free:focus { border-color:var(--blue); }
+
+  .row { display:flex; gap:11px; align-items:flex-start; padding:9px 0; border-bottom:1px dashed var(--line); font-size:.88rem; }
+  .row:last-child { border-bottom:none; }
+  .row .ic { flex:0 0 auto; width:22px; text-align:center; }
+  .mono { font-family:var(--mono); font-size:.8rem; }
+  pre { background:#0f172a; color:#cbd5e1; border-radius:9px; padding:14px 16px; overflow-x:auto;
+        font-family:var(--mono); font-size:.76rem; line-height:1.6; white-space:pre; }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:860px){ .grid2{grid-template-columns:1fr} }
+  .bigbtn { border:2px dashed var(--line); border-radius:13px; padding:24px; text-align:center; background:#fcfdff;
+            transition:all .2s; cursor:pointer; }
+  .bigbtn:hover { border-color:var(--blue); background:var(--blue-soft); }
+  .bigbtn .em { font-size:1.6rem; }
+  .bigbtn .t { font-weight:800; font-size:1rem; margin-top:6px; }
+  .bigbtn .d { font-size:.83rem; color:var(--muted); margin-top:3px; }
+
+  .ver { display:flex; gap:10px; align-items:center; padding:8px 11px; border-radius:9px; background:#f7f9fc;
+         margin-bottom:6px; font-size:.85rem; flex-wrap:wrap; }
+  .ver .vt { font-family:var(--mono); font-weight:800; }
+  .ver.final { background:var(--green-soft); }
+
+  .pipe { display:flex; gap:8px; flex-wrap:wrap; }
+  .pstep { flex:1; min-width:112px; border:1.5px solid var(--line); border-radius:10px; padding:11px; text-align:center;
+           background:#fff; transition:all .3s; }
+  .pstep .pn { font-size:.85rem; font-weight:700; }
+  .pstep .ps { font-size:.72rem; color:var(--muted); font-family:var(--mono); }
+  .pstep.run { border-color:var(--amber); background:var(--amber-soft); }
+  .pstep.ok { border-color:var(--green); background:var(--green-soft); }
+
+  svg.kg { width:100%; height:330px; background:#fbfcfe; border:1px solid var(--line); border-radius:11px; }
+  .kg-lbl { font-size:9.5px; fill:#1a2333; font-weight:600; }
+  .kg-sub { font-size:8px; fill:#5b6577; }
+  .kg-edge { stroke:#c9d2de; stroke-width:1.4; }
+  .kg-edge.new { stroke:#0d9488; stroke-width:2; stroke-dasharray:4 3; }
+  .kg-node.fresh circle { animation:pop .7s ease-out; }
+  @keyframes pop { from{opacity:0;transform:scale(.4)} to{opacity:1;transform:scale(1)} }
+
+  .bar { position:sticky; bottom:0; background:rgba(255,255,255,.97); border-top:1px solid var(--line);
+         padding:13px 0; margin-top:18px; display:flex; gap:11px; align-items:center; flex-wrap:wrap; }
+  .bar .sp { flex:1; }
+  .note { font-size:.8rem; color:var(--muted); }
+  .devnote { border-left:4px solid var(--purple); background:var(--purple-soft); border-radius:9px;
+             padding:11px 15px; font-size:.85rem; margin-top:14px; }
+  .devnote b { color:var(--purple); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail" id="rail"></aside>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ============================================================
+   MOCK 資料 —— 真實系統中由 Jira API + LLM 產生
+   ============================================================ */
+var JIRA_CARDS = [
+  { key:"KAN-15", title:"104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地",
+    labels:["ingestion","phase-0","week-1"],
+    kgHits:[
+      "決策 D-003「爬蟲一律限速並落 raw」— 來自 KAN-6，可直接套用",
+      "風險 R-002「來源改版導致選擇器失效」— KAN-14 曾記錄",
+      "模式 P-001「Protocol + 純函式 normalize」— 兩張卡用過，測試成本最低"]},
+  { key:"KAN-16", title:"打標模組：structured outputs + content_hash 快取 + llm_calls 成本落地",
+    labels:["enrichment","phase-0","week-2"],
+    kgHits:["決策 D-005「embedding 納入成本帳本」— 來自 KAN-14"]},
+  { key:"KAN-17", title:"embedding + HNSW 索引 + 公司正規化",
+    labels:["enrichment","phase-0","week-2"], kgHits:[]}
+];
+
+var SECTIONS_R1 = [
+  { id:"goal", title:"目標", body:
+"做完之後「資料進得來」成立：一條可重複執行的批次，把真實職缺抓進 jobs、原始 JSON 落 JSONB、url 去重、每次執行在 crawl_runs 留紀錄。\n\n這是 Phase 0 Week 1 最後一塊，卡著 W2 的打標與 embedding。"},
+  { id:"current", title:"現況與限制", body:
+"ingestion/ 目前只有空的 __init__.py。6 張表與 migration 002 已就緒，httpx 已在依賴內。\n\n[!] 探測結果：104 搜尋 API 回 Cloudflare 挑戰頁（403），headless 亦擋。Cake 無防護但前端渲染。\n[!] jobs.source 的 CHECK 只允許 '104' 與 'cake'，接第三來源需要新 migration。"},
+  { id:"approach", title:"實作方式", body:
+"SourceAdapter 定義為 Protocol：search() 為 async（負責網路與限速），normalize() 為同步純函式（無 I/O，測試不需 mock）。\n\nrunner 負責編排：開 crawl_runs(running) → search → normalize → upsert → 收尾。任何例外先把 crawl_runs 收成 failed 再往上拋。"},
+  { id:"scope", title:"範圍與檔案", body:
+"新增 6 個模組檔 + 1 個 migration + 2 個測試檔，約 800 行（含測試）。\n單張卡可完成，不需拆卡。"},
+  { id:"risk", title:"風險與技術債", body:
+"債① 第一來源可能不是台灣職缺站 — 償還觸發：Phase 1 公開前必須有台灣來源。\n債② 無排程只有 CLI — 償還觸發：KAN-23。\n風險：換源後 W2 的打標 prompt 與 golden set 會建立在英文 JD 上，中文 JD 品質需重新驗證。"}
+];
+
+var QUESTIONS_R1 = [
+  { id:"A", type:"choice", q:"Phase 0 第一個來源接誰？", opts:[
+      {v:"A1", t:"硬上 104", d:"需真實瀏覽器 session 撐過 Cloudflare · 排程不穩 · 面試扣分"},
+      {v:"A2", t:"Cake 先行", d:"保留台灣定位 · 需再探測其 API"},
+      {v:"A3", t:"★ 先接正式 API 來源（Remotive）", d:"迴路優先 · 介面驗證最徹底 · 需多開 migration 003"},
+      {v:"A4", t:"只用 fixture 打通迴路", d:"最快 · 但真實性未驗證"}]},
+  { id:"B", type:"bool", q:"加入 tenacity 做指數退避重試？", hint:"dual-lens §5 已指定 · 手刻約多 40 行" },
+  { id:"C", type:"free", q:"有沒有我沒問到、但你在意的限制？", hint:"選填" }
+];
+
+var QUESTIONS_R2 = {
+  A3:[ { id:"A3-1", type:"choice", q:"換源後，jobs.source 要怎麼處理？", opts:[
+          {v:"widen", t:"★ 開 migration 003 放寬 CHECK", d:"最小改動 · 每加一個來源就要改一次"},
+          {v:"table", t:"改成 sources 對照表 + 外鍵", d:"之後加來源零 migration · 這張卡多 60 行"},
+          {v:"drop",  t:"直接拿掉 CHECK", d:"最省事 · 失去資料庫層防呆"}]},
+       { id:"A3-2", type:"bool", q:"要不要同時保留一支「104 fixture-only」的 adapter？",
+         hint:"讓中文 JD 的正規化邏輯先被測到，之後接真實 104 時省一輪" } ],
+  A2:[ { id:"A2-1", type:"bool", q:"Cake 若也需要瀏覽器渲染，接受 Playwright 進依賴嗎？",
+         hint:"CI 會變重（需裝 chromium），但台灣來源保住了" },
+       { id:"A2-2", type:"choice", q:"探測 Cake API 的時間怎麼算？", opts:[
+          {v:"in", t:"算進這張卡", d:"卡可能超過 2 天"},
+          {v:"split", t:"★ 拆一張探測卡", d:"KAN-15 等探測結果"}]} ],
+  A1:[ { id:"A1-1", type:"bool", q:"接受排程失敗率可能超過 10%（DEBT 的償還觸發線）？",
+         hint:"一旦觸發就得改架構" } ],
+  A4:[ { id:"A4-1", type:"choice", q:"驗收條件「≥200 筆真實資料」怎麼辦？", opts:[
+          {v:"move", t:"★ 移到新的一張卡", d:"這張只做介面與測試"},
+          {v:"del",  t:"直接刪掉這條", d:"風險：迴路真實性永遠沒被驗證"}]} ]
+};
+
+var SECTION_PATCH = {
+  A3:{ approach:"\n\n【依決策 A3 更新】第一個來源改為 Remotive（公開 JSON API、無防護）。104 的 adapter 介面保留，等出場前再接。",
+       scope:"\n\n【依決策 A3 更新】新增 alembic/versions/003_widen_job_source.py（+30 行）。" },
+  A2:{ approach:"\n\n【依決策 A2 更新】第一個來源改為 Cake，需先確認其內部 API 或改用瀏覽器渲染。" },
+  A1:{ approach:"\n\n【依決策 A1 更新】維持 104，ingestion 需引入瀏覽器 session 管理層（+150 行，排程穩定性下降）。" },
+  A4:{ scope:"\n\n【依決策 A4 更新】移除真實抓取相關程式碼，僅保留 fixture 驅動的測試路徑（-120 行）。" }
+};
+
+var VERIFY_SCENARIOS = [
+  {id:"V1", g:"來源回傳 20 筆職缺", w:"執行一次 crawl", t:"jobs 新增 20 列，crawl_runs.jobs_new = 20"},
+  {id:"V2", g:"同一批出現兩筆相同 url", w:"執行一次 crawl", t:"jobs 只新增 1 列（url unique 生效）"},
+  {id:"V3", g:"昨天已存在、JD 一字未改的職缺", w:"再跑一次 crawl", t:"只有 last_seen_at 更新，content_hash 與 jd_text 不變"},
+  {id:"V4", g:"來源在第 3 頁回 500", w:"執行 crawl", t:"重試 3 次後失敗，crawl_runs.status = failed 且 error 有值"},
+  {id:"V5", g:"薪資寫成 $50k - $70k", w:"呼叫 normalize()", t:"salary_min=50000, salary_max=70000, salary_type=annual"},
+  {id:"V6", g:"JD 內含 HTML 標籤與 3000 字福利樣板", w:"呼叫 normalize()", t:"jd_text 為純文字，content_hash 穩定可重現"}
+];
+
+var CODE_FILES = [
+  {p:"ingestion/models.py", a:"新增", l:70, d:"RawJob / JobPosting"},
+  {p:"ingestion/base.py", a:"新增", l:60, d:"SourceAdapter Protocol + RateLimiter"},
+  {p:"ingestion/adapters/remotive.py", a:"新增", l:130, d:"來源實作：抓取・重試・正規化"},
+  {p:"ingestion/repository.py", a:"新增", l:150, d:"upsert・content_hash・crawl_runs"},
+  {p:"ingestion/runner.py", a:"新增", l:90, d:"編排"},
+  {p:"ingestion/__main__.py", a:"新增", l:30, d:"CLI"},
+  {p:"alembic/versions/003_*.py", a:"新增", l:30, d:"放寬 jobs.source"},
+  {p:"tests/ingestion/test_normalize.py", a:"新增", l:120, d:"正規化邊界"},
+  {p:"tests/ingestion/test_runner.py", a:"新增", l:130, d:"去重・hash・crawl_runs"}
+];
+
+var PIPE_STEPS = ["ruff","mypy","import-linter","pytest","alembic upgrade","build image","deploy"];
+
+var STEPS = [
+  {k:"intake",    n:"① 需求進來",    s:"從 Jira 拉取"},
+  {k:"spec",      n:"② 規格與確認",  s:"LLM 分析・可編輯・問答 loop"},
+  {k:"frozen",    n:"③ 凍結版本",    s:"版本控制"},
+  {k:"build",     n:"④ 驗證線／實作", s:"測試情境・程式碼"},
+  {k:"deploy",    n:"⑤ 部署",        s:"CI/CD"},
+  {k:"knowledge", n:"⑥ 知識沉澱",    s:"寫進知識圖譜"}
+];
+
+var KG_BASE = [
+  {id:"KAN-6",  t:"需求", x:90,  y:60,  label:"KAN-6",  sub:"repo 骨架"},
+  {id:"KAN-14", t:"需求", x:90,  y:165, label:"KAN-14", sub:"DB 基礎"},
+  {id:"D-003",  t:"決策", x:265, y:45,  label:"D-003",  sub:"爬蟲限速+落 raw"},
+  {id:"D-005",  t:"決策", x:265, y:150, label:"D-005",  sub:"embedding 進帳本"},
+  {id:"P-001",  t:"模式", x:265, y:255, label:"P-001",  sub:"Protocol+純函式"},
+  {id:"R-002",  t:"風險", x:440, y:262, label:"R-002",  sub:"來源改版失效"}
+];
+var KG_BASE_EDGES = [["KAN-6","D-003"],["KAN-14","D-005"],["KAN-14","P-001"],["KAN-14","R-002"]];
+var NODE_COLOR = {"需求":"#2563eb","決策":"#d97706","模式":"#8b5cf6","風險":"#dc2626","規格":"#0d9488","測試":"#16a34a"};
+
+/* ============================================================
+   狀態
+   ============================================================ */
+var S = {
+  stage:"intake", card:null, round:1,
+  sections:[], questions:[], answers:{}, changes:[], versions:[],
+  editing:null, draft:"",
+  verify:null, code:null, testRun:null, pipe:-1,
+  kgExtra:[], kgEdges:[]
+};
+
+function now(){ return new Date().toTimeString().slice(0,5); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function chip(k,txt){ return '<span class="chip '+(k||"gr")+'">'+txt+'</span>'; }
+
+/* ============================================================
+   動作
+   ============================================================ */
+var ACT = {
+  pick:function(key){
+    var c = JIRA_CARDS.filter(function(x){return x.key===key})[0];
+    S.card=c; S.round=1; S.answers={}; S.changes={}; S.changes=[];
+    S.sections = SECTIONS_R1.map(function(s){ return {id:s.id,title:s.title,body:s.body,edits:0}; });
+    S.questions = QUESTIONS_R1;
+    S.versions = [{label:"v0.1",kind:"draft",at:now(),note:"LLM 依 Jira 卡 + 知識庫初次生成"}];
+    S.stage="spec"; render(); scrollTop();
+  },
+  edit:function(id){ var s=find(id); S.editing=id; S.draft=s.body; render(); focusEdit(); },
+  cancelEdit:function(){ S.editing=null; render(); },
+  commitEdit:function(){
+    var s=find(S.editing);
+    if (S.draft !== s.body){
+      S.changes.push({at:now(), id:s.id, round:S.round, from:s.body, to:S.draft});
+      s.body=S.draft; s.edits++;
+    }
+    S.editing=null; render();
+  },
+  next:function(){
+    var a=S.answers["A"];
+    var patch=SECTION_PATCH[a]||{};
+    S.sections.forEach(function(s){ if(patch[s.id]) s.body += patch[s.id]; });
+    var nq=(QUESTIONS_R2[a]||[]).filter(function(q){ return S.answers[q.id]===undefined; });
+    S.questions = nq.length ? nq : [{id:"Z",type:"free",q:"這個方向看起來如何？還有什麼要調整的？"}];
+    S.round++;
+    S.versions.push({label:"v0."+(S.versions.length+1),kind:"draft",at:now(),
+      note:"探索第 "+(S.round-1)+" 輪：依「"+(a||"未選")+"」重生規格與問題"});
+    render(); scrollTop();
+  },
+  confirm:function(){
+    S.versions.push({label:"v1.0",kind:"final",at:now(),note:"已確認 — 凍結，可產生驗證線與實作"});
+    S.stage="frozen"; render(); scrollTop();
+  },
+  genVerify:function(){ S.verify=VERIFY_SCENARIOS; S.stage="build"; render(); scrollTop(); },
+  genCode:function(){ S.code=CODE_FILES; S.stage="build"; render(); scrollTop(); },
+  runTests:function(){
+    S.testRun="running"; render();
+    setTimeout(function(){ S.testRun="pass"; render(); }, 1500);
+  },
+  deploy:function(){ S.stage="deploy"; S.pipe=0; render(); scrollTop(); tick(); },
+  harvest:function(){
+    var a=S.answers["A"]||"A3";
+    S.kgExtra=[
+      {id:"KAN-15",t:"需求",x:440,y:60, label:"KAN-15",sub:"104 adapter"},
+      {id:"D-011", t:"決策",x:600,y:42, label:"D-011", sub:"來源選 "+a+"（避開防護）"},
+      {id:"S-015", t:"規格",x:610,y:145,label:"S-015", sub:"v1.0 凍結規格"},
+      {id:"T-015", t:"測試",x:600,y:248,label:"T-015", sub:"6 條驗證情境"},
+      {id:"R-007", t:"風險",x:440,y:160,label:"R-007", sub:"中文 JD 品質未驗"}
+    ];
+    S.kgEdges=[["KAN-15","D-011"],["KAN-15","S-015"],["S-015","T-015"],["KAN-15","R-007"],
+               ["D-003","KAN-15"],["P-001","S-015"],["R-002","R-007"]];
+    S.stage="knowledge"; render(); scrollTop();
+  },
+  restart:function(){
+    S.stage="intake"; S.card=null; S.verify=null; S.code=null; S.testRun=null; S.pipe=-1; S.round=1;
+    render(); scrollTop();
+  }
+};
+
+function tick(){
+  if (S.pipe>=0 && S.pipe<PIPE_STEPS.length){
+    setTimeout(function(){ S.pipe++; render(); tick(); }, 650);
+  }
+}
+function find(id){ return S.sections.filter(function(s){return s.id===id})[0]; }
+function scrollTop(){ window.scrollTo({top:0,behavior:"smooth"}); }
+function focusEdit(){
+  var t=document.querySelector("textarea.edit");
+  if(t){ t.focus(); t.setSelectionRange(t.value.length,t.value.length); }
+}
+
+/* ============================================================
+   片段
+   ============================================================ */
+function renderRail(){
+  var idx = STEPS.map(function(s){return s.k}).indexOf(S.stage);
+  var h = '<h1>DevLoop</h1><div class="tagline">closed-loop dev system</div>';
+  STEPS.forEach(function(s,i){
+    var cls = "step" + (S.stage===s.k?" on":"") + (i<idx?" done":"");
+    h += '<div class="'+cls+'"><span class="dot">'+(i<idx?"✓":(i+1))+'</span>'
+       + '<span class="t">'+s.n+'<small>'+s.s+'</small></span></div>';
+  });
+  h += '<div class="loopmark">↑ ⑥ 餵回 ① 形成閉環 ↑</div>';
+  if (S.card){
+    var v = S.versions.length ? S.versions[S.versions.length-1].label : "—";
+    h += '<div class="railcard"><div class="l">目前處理</div>'
+       + '<div class="k">'+S.card.key+'</div>'
+       + '<div class="s">'+esc(S.card.title.slice(0,24))+'…</div>'
+       + '<div class="l" style="margin-top:8px">版本 '+v+' · 探索第 '+S.round+' 輪</div></div>';
+  }
+  return h;
+}
+
+function renderSection(s){
+  if (S.editing===s.id){
+    return '<div class="sec'+(s.edits?" edited":"")+'">'
+      + '<div class="sec-h"><span class="n">'+s.id+'</span><span class="ttl">'+s.title+'</span></div>'
+      + '<div style="padding:13px 16px 9px"><textarea class="edit" id="draft">'+esc(s.body)+'</textarea></div>'
+      + '<div class="edit-actions">'
+      + '<button class="btn primary" data-act="commitEdit">儲存修改</button>'
+      + '<button class="btn" data-act="cancelEdit">取消</button></div></div>';
+  }
+  return '<div class="sec'+(s.edits?" edited":"")+'">'
+    + '<div class="sec-h"><span class="n">'+s.id+'</span><span class="ttl">'+s.title+'</span>'
+    + (s.edits?chip("a","已改 "+s.edits+" 次"):"") + '</div>'
+    + '<div class="sec-b" data-act="edit" data-arg="'+s.id+'">'
+    + '<span class="editcue">✎ 點一下編輯</span>'+esc(s.body)+'</div></div>';
+}
+
+function renderQuestion(q){
+  var v = S.answers[q.id];
+  var done = v!==undefined && v!=="" && v!==null;
+  var typeLabel = q.type==="choice" ? "選擇題" : (q.type==="bool" ? "是非題" : "問答題");
+  var h = '<div class="q'+(done?" done":"")+'">'
+    + '<div class="q-h"><span class="id">'+q.id+'</span><span class="qt">'+esc(q.q)+'</span>'
+    + chip(done?"g":"b", typeLabel) + '</div>';
+  if (q.hint) h += '<div class="note" style="margin-bottom:8px">'+esc(q.hint)+'</div>';
+  if (q.type==="choice"){
+    h += '<div class="opts">';
+    q.opts.forEach(function(o){
+      h += '<label class="opt'+(v===o.v?" sel":"")+'">'
+         + '<input type="radio" name="'+q.id+'" '+(v===o.v?"checked":"")+' data-qid="'+q.id+'" data-val="'+o.v+'">'
+         + '<span><span class="opt-t">'+esc(o.t)+'</span><br><span class="opt-d">'+esc(o.d)+'</span></span></label>';
+    });
+    h += '</div>';
+  } else if (q.type==="bool"){
+    h += '<div class="yn">'
+      + '<button class="'+(v===true?"y":"")+'" data-bool="'+q.id+'" data-val="yes">是</button>'
+      + '<button class="'+(v===false?"n":"")+'" data-bool="'+q.id+'" data-val="no">否</button></div>';
+  } else {
+    h += '<textarea class="free" rows="2" data-free="'+q.id+'" placeholder="想補充的限制或顧慮…">'+esc(v||"")+'</textarea>';
+  }
+  return h + '</div>';
+}
+
+function renderKG(){
+  var nodes = KG_BASE.concat(S.kgExtra);
+  var edges = KG_BASE_EDGES.concat(S.kgEdges);
+  var by={}; nodes.forEach(function(n){ by[n.id]=n; });
+  var h = '<svg class="kg" viewBox="0 0 700 330">';
+  edges.forEach(function(e){
+    var A=by[e[0]], B=by[e[1]]; if(!A||!B) return;
+    var isNew = S.kgExtra.some(function(n){ return n.id===e[0]||n.id===e[1]; });
+    h += '<line class="kg-edge'+(isNew?" new":"")+'" x1="'+A.x+'" y1="'+A.y+'" x2="'+B.x+'" y2="'+B.y+'"></line>';
+  });
+  nodes.forEach(function(n){
+    var fresh = S.kgExtra.some(function(x){ return x.id===n.id; });
+    h += '<g class="kg-node'+(fresh?" fresh":"")+'">'
+      + '<circle cx="'+n.x+'" cy="'+n.y+'" r="17" fill="'+(NODE_COLOR[n.t]||"#94a3b8")+'" opacity="'+(fresh?1:.82)+'"></circle>'
+      + '<text class="kg-lbl" x="'+n.x+'" y="'+(n.y+32)+'" text-anchor="middle">'+n.label+'</text>'
+      + '<text class="kg-sub" x="'+n.x+'" y="'+(n.y+43)+'" text-anchor="middle">'+esc(n.sub)+'</text></g>';
+  });
+  return h + '</svg>';
+}
+
+/* ============================================================
+   各階段畫面
+   ============================================================ */
+function viewIntake(){
+  var h = '<div class="crumb">STEP ① · INTAKE</div><h2 class="title">從 Jira 拉需求</h2>'
+    + '<p class="sub">系統定時同步 Jira 未完成的卡。<b>每張卡下面的綠框就是閉環的證據</b> —— '
+    + '在你開始想之前，知識庫已經先把過去做過的相關決策撈出來給 LLM 當輸入。</p>';
+  JIRA_CARDS.forEach(function(c){
+    h += '<div class="jcard"><div class="k">'+c.key+'</div><div class="s">'+esc(c.title)+'</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+      + c.labels.map(function(l){return chip("gr",l)}).join("") + '</div>';
+    if (c.kgHits.length){
+      h += '<div class="kg-hit"><b>🔗 知識庫命中 '+c.kgHits.length+' 條</b>'
+        + c.kgHits.map(function(x){return '<div>· '+esc(x)+'</div>'}).join("") + '</div>';
+    }
+    h += '<div style="margin-top:11px"><button class="btn primary" data-act="pick" data-arg="'+c.key+'">分析這張卡 →</button></div></div>';
+  });
+  h += '<div class="devnote"><b>Prototype 說明</b>：真實系統這裡會呼叫 Jira API 拉卡，'
+     + '再把卡片內容 + 知識庫命中的決策／風險／模式一起丟給 LLM，產生下一頁的規格草稿。</div>';
+  return h;
+}
+
+function viewSpec(){
+  var required = S.questions.filter(function(q){ return q.type!=="free"; });
+  var requiredDone = required.every(function(q){ return S.answers[q.id]!==undefined; });
+  var answered = S.questions.filter(function(q){
+    var v=S.answers[q.id]; return v!==undefined && v!=="" && v!==null; }).length;
+  var ver = S.versions[S.versions.length-1].label;
+
+  var h = '<div class="crumb">STEP ② · SPEC &amp; CLARIFY · 探索第 '+S.round+' 輪</div>'
+    + '<h2 class="title">'+S.card.key+' 規格說明</h2>'
+    + '<p class="sub">每一節都可以<b>點一下直接改</b>，改動會被記錄。下方問題答完後：'
+    + '<code>Next</code> = 先看看這個選擇會長怎樣（不求全解，系統依你的更新再問下一輪）；'
+    + '<code>確認</code> = 凍結成正式版本。</p>';
+
+  h += '<div class="panel"><h3>規格草稿 '+chip("b",ver)+'</h3>'
+     + '<div class="hint">LLM 依 Jira 卡 + 知識庫 '+S.card.kgHits.length+' 條命中生成</div>'
+     + S.sections.map(renderSection).join("") + '</div>';
+
+  h += '<div class="panel"><h3>需要你確認的問題 '+chip(requiredDone?"g":"a", answered+" / "+S.questions.length)+'</h3>'
+     + '<div class="hint">第 '+S.round+' 輪 · 選擇題／是非題／問答題</div>'
+     + S.questions.map(renderQuestion).join("") + '</div>';
+
+  if (S.changes.length){
+    h += '<div class="panel"><h3>變更紀錄 '+chip("a",S.changes.length)+'</h3>'
+       + '<div class="hint">你對規格的每一次修改都留痕，之後可回溯「為什麼規格長這樣」</div>';
+    S.changes.forEach(function(c){
+      h += '<div class="row"><span class="ic">✎</span><span>'
+        + '<span class="mono">'+c.at+' · 第 '+c.round+' 輪 · '+c.id+'</span><br>'
+        + '<span style="color:var(--red);text-decoration:line-through">'+esc(c.from.slice(0,44))+'…</span><br>'
+        + '<span style="color:var(--green)">'+esc(c.to.slice(0,44))+'…</span></span></div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="bar"><span class="note">'
+     + (requiredDone ? "✅ 必答題已完成" : "⚠️ 還有必答題未回答")
+     + '</span><span class="sp"></span>'
+     + '<button class="btn amber lg" data-act="next"'+(S.answers["A"]===undefined?" disabled":"")+'>Next — 看看這個選擇會怎樣 ↻</button>'
+     + '<button class="btn green lg" data-act="confirm"'+(requiredDone?"":" disabled")+'>確認 — 凍結版本 ✓</button></div>';
+
+  h += '<div class="devnote"><b>Next 與 確認 的差別</b>：Next 不凍結，它把你的答案餵回 LLM，'
+     + '重生規格段落並問出<b>更深一層</b>的問題（例如選了 A3，它才會問「jobs.source 的 CHECK 要怎麼處理」）。'
+     + '確認則產生不可變版本，之後所有測試與程式碼都綁在那個版本號上。</div>';
+  return h;
+}
+
+function viewFrozen(){
+  var h = '<div class="crumb">STEP ③ · FROZEN SPEC</div><h2 class="title">v1.0 已凍結</h2>'
+    + '<p class="sub">規格不可再改。要改就開新版本，舊版本永久保留 —— 這是「當初批准的到底是什麼」的唯一真相。</p>';
+  h += '<div class="panel"><h3>版本歷史</h3>';
+  S.versions.forEach(function(v){
+    h += '<div class="ver'+(v.kind==="final"?" final":"")+'"><span class="vt">'+v.label+'</span>'
+      + chip(v.kind==="final"?"g":"gr", v.kind==="final"?"已確認":"草稿")
+      + '<span style="flex:1">'+esc(v.note)+'</span><span class="mono">'+v.at+'</span></div>';
+  });
+  h += '</div>';
+  var edited = S.sections.filter(function(s){return s.edits>0}).length;
+  h += '<div class="panel"><h3>這一版包含</h3>'
+     + '<div class="row"><span class="ic">📄</span><span>'+S.sections.length+' 個規格段落，其中 '+edited+' 個被你改過</span></div>'
+     + '<div class="row"><span class="ic">✅</span><span>'+Object.keys(S.answers).length+' 個確認回答，經過 '+S.round+' 輪探索</span></div>'
+     + '<div class="row"><span class="ic">✎</span><span>'+S.changes.length+' 筆規格變更紀錄</span></div></div>';
+  h += '<div class="grid2">'
+     + '<div class="bigbtn" data-act="genVerify"><div class="em">🧪</div><div class="t">產生 Verification 線</div>'
+     + '<div class="d">從規格推出驗證情境 → 自動化測試</div></div>'
+     + '<div class="bigbtn" data-act="genCode"><div class="em">⌨️</div><div class="t">產生實作 Code</div>'
+     + '<div class="d">依凍結規格產出檔案與程式碼</div></div></div>';
+  h += '<div class="devnote"><b>為什麼兩條線分開</b>：驗證線只讀「規格」，實作線也只讀「規格」——'
+     + '兩邊互不參考。測試不是照著程式碼寫的，所以測試真的能抓到實作偏離規格的地方。</div>';
+  return h;
+}
+
+function viewBuild(){
+  var h = '<div class="crumb">STEP ④ · VERIFY &amp; IMPLEMENT</div><h2 class="title">驗證線與實作</h2>'
+    + '<p class="sub">兩邊都完成、測試全綠，才會解鎖部署。</p>';
+
+  h += '<div class="panel"><h3>🧪 驗證線 '+(S.verify?chip("g","已產生 "+S.verify.length+" 條"):chip("gr","未產生"))+'</h3>';
+  if (!S.verify){
+    h += '<div class="hint">從凍結規格推導出可驗收的情境</div>'
+      + '<button class="btn primary" data-act="genVerify">產生驗證情境</button>';
+  } else {
+    h += '<div class="hint">Given / When / Then — 每條會轉成一個測試函式</div>';
+    S.verify.forEach(function(v){
+      h += '<div class="row"><span class="ic mono">'+v.id+'</span><span>'
+        + '<b>Given</b> '+esc(v.g)+'<br><b>When</b> '+esc(v.w)+'<br>'
+        + '<b>Then</b> <span style="color:var(--green)">'+esc(v.t)+'</span></span></div>';
+    });
+    h += '<pre style="margin-top:12px">'+esc(
+'# tests/ingestion/test_runner.py  (由 V2 自動產生)\n'+
+'async def test_duplicate_url_inserted_once(session, adapter):\n'+
+'    """V2: 同一批出現兩筆相同 url -> jobs 只新增 1 列"""\n'+
+'    raw = [make_raw(url="https://x/1"), make_raw(url="https://x/1")]\n'+
+'    summary = await run_crawl(adapter.with_results(raw), QUERY, "manual")\n'+
+'    assert summary.jobs_new == 1\n'+
+'    assert await count(session, Job) == 1')+'</pre>';
+  }
+  h += '</div>';
+
+  h += '<div class="panel"><h3>⌨️ 實作 '+(S.code?chip("g","已產生 "+S.code.length+" 檔"):chip("gr","未產生"))+'</h3>';
+  if (!S.code){
+    h += '<div class="hint">依凍結規格產出檔案</div>'
+      + '<button class="btn primary" data-act="genCode">產生實作程式碼</button>';
+  } else {
+    S.code.forEach(function(f){
+      h += '<div class="row"><span class="ic">📄</span>'
+        + '<span style="flex:1"><span class="mono">'+esc(f.p)+'</span><br><span class="note">'+esc(f.d)+'</span></span>'
+        + chip("b",f.a)+'<span class="note">'+f.l+' 行</span></div>';
+    });
+  }
+  h += '</div>';
+
+  if (S.verify && S.code){
+    h += '<div class="panel"><h3>執行驗證</h3>'
+       + '<div class="hint">跑測試線去驗實作線 —— 兩邊來源獨立，這一步才有意義</div>';
+    if (S.testRun===null) h += '<button class="btn primary lg" data-act="runTests">執行 '+S.verify.length+' 條驗證</button>';
+    else if (S.testRun==="running") h += '<div class="note">⏳ 執行中…</div>';
+    else h += '<div style="color:var(--green);font-weight:700">✅ '+S.verify.length+' / '+S.verify.length+' 通過</div>'
+            + '<div style="margin-top:12px"><button class="btn purple lg" data-act="deploy">驗證完成 → 部署 🚀</button></div>';
+    h += '</div>';
+  }
+  return h;
+}
+
+function viewDeploy(){
+  var h = '<div class="crumb">STEP ⑤ · DEPLOY</div><h2 class="title">CI/CD</h2>'
+    + '<p class="sub">驗證通過才走到這裡。管線失敗會退回第 ④ 步，不會退回規格。</p>'
+    + '<div class="panel"><h3>Pipeline</h3><div class="pipe">';
+  PIPE_STEPS.forEach(function(s,i){
+    var cls = i<S.pipe ? "ok" : (i===S.pipe ? "run" : "");
+    var mark = i<S.pipe ? "✓" : (i===S.pipe ? "▶" : "·");
+    var st = i<S.pipe ? "passed" : (i===S.pipe ? "running" : "queued");
+    h += '<div class="pstep '+cls+'"><div class="pn">'+mark+' '+s+'</div><div class="ps">'+st+'</div></div>';
+  });
+  h += '</div>';
+  if (S.pipe>=PIPE_STEPS.length){
+    h += '<div style="margin-top:16px"><div style="color:var(--green);font-weight:800">✅ 部署完成 · KAN-15 上線</div>'
+       + '<div style="margin-top:12px"><button class="btn teal lg" data-act="harvest">沉澱進知識庫 →</button></div></div>';
+  }
+  return h + '</div>';
+}
+
+function viewKnowledge(){
+  var h = '<div class="crumb">STEP ⑥ · KNOWLEDGE · 閉環</div><h2 class="title">沉澱進知識圖譜</h2>'
+    + '<p class="sub">這一輪產生的決策、規格、測試、風險全部進圖。<b>綠色虛線</b>是這次新增的關聯 —— '
+    + '注意 <code>D-003</code> 與 <code>P-001</code> 這兩個舊節點也連了進來：'
+    + '它們在第 ① 步被撈出來當 LLM 的輸入，現在被實際使用過，關聯就成立了。</p>';
+  h += '<div class="panel"><h3>Knowledge Graph</h3>'
+     + '<div class="hint">節點類型：需求 · 決策 · 規格 · 測試 · 風險 · 模式</div>' + renderKG() + '</div>';
+  h += '<div class="panel"><h3>本輪新增</h3>';
+  S.kgExtra.forEach(function(n){
+    h += '<div class="row"><span class="ic">●</span><span><span class="mono">'+n.id+'</span> '
+      + chip("t",n.t)+' '+esc(n.sub)+'</span></div>';
+  });
+  h += '</div>';
+  h += '<div class="panel" style="border-color:var(--teal)"><h3>🔁 閉環驗證</h3>'
+     + '<div class="hint">下一張卡（KAN-16）進來時，知識庫會這樣餵給 LLM：</div>'
+     + '<div class="jcard" style="margin-top:8px"><div class="k">KAN-16</div>'
+     + '<div class="s">打標模組：structured outputs + content_hash 快取</div>'
+     + '<div class="kg-hit"><b>🔗 知識庫命中 4 條</b>'
+     + '<div>· 決策 D-005「embedding 納入成本帳本」— 來自 KAN-14</div>'
+     + '<div>· 決策 <b>D-011</b>「來源避開有防護的站」— <b>來自剛剛的 KAN-15</b></div>'
+     + '<div>· 風險 <b>R-007</b>「中文 JD 品質未驗」— <b>來自剛剛的 KAN-15</b>，打標卡必須處理</div>'
+     + '<div>· 模式 P-001「Protocol + 純函式」— 已被 2 張卡驗證有效</div></div></div>'
+     + '<div class="devnote"><b>閉環成立的判準</b>：R-007 這條風險是在 KAN-15 被記下的，'
+     + '但真正該處理它的是 KAN-16。沒有知識庫，這條風險會消失在聊天記錄裡；'
+     + '有了它，下一張卡一開始就被迫面對。<b>這就是整個系統存在的理由。</b></div>'
+     + '<div style="margin-top:14px"><button class="btn primary lg" data-act="restart">← 回到 ① 開始下一張卡</button></div></div>';
+  return h;
+}
+
+/* ============================================================
+   渲染 + 事件
+   ============================================================ */
+function render(){
+  document.getElementById("rail").innerHTML = renderRail();
+  var v = S.stage==="intake" ? viewIntake()
+        : S.stage==="spec" ? viewSpec()
+        : S.stage==="frozen" ? viewFrozen()
+        : S.stage==="build" ? viewBuild()
+        : S.stage==="deploy" ? viewDeploy()
+        : viewKnowledge();
+  document.getElementById("main").innerHTML = v;
+}
+
+document.addEventListener("click", function(e){
+  var el = e.target.closest("[data-act]");
+  if (el && !el.disabled){
+    var fn = ACT[el.getAttribute("data-act")];
+    if (fn) { fn(el.getAttribute("data-arg")); return; }
+  }
+  var b = e.target.closest("[data-bool]");
+  if (b){
+    var id=b.getAttribute("data-bool");
+    var want = b.getAttribute("data-val")==="yes";
+    S.answers[id] = (S.answers[id]===want) ? undefined : want;
+    if (S.answers[id]===undefined) delete S.answers[id];
+    render();
+  }
+});
+
+document.addEventListener("change", function(e){
+  var r = e.target.closest("[data-qid]");
+  if (r){ S.answers[r.getAttribute("data-qid")] = r.getAttribute("data-val"); render(); }
+});
+
+document.addEventListener("input", function(e){
+  if (e.target.id==="draft"){ S.draft = e.target.value; return; }
+  var f = e.target.closest("[data-free]");
+  if (f){ S.answers[f.getAttribute("data-free")] = f.value; }
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpecGate 技術選型閘門</title>
+<style>
+  :root {
+    --bg:#f7f8fa; --card:#fff; --ink:#1a2333; --muted:#5b6577; --line:#e3e7ee;
+    --blue:#2563eb; --blue-soft:#eaf1fe; --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#dc2626; --red-soft:#fdecec; --amber:#d97706; --amber-soft:#fdf1e7;
+    --purple:#8b5cf6; --purple-soft:#f3eeff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink); line-height:1.85;
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    padding:30px 18px 190px;
+  }
+  .wrap { max-width:960px; margin:0 auto; }
+
+  header.card-head {
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:22px 26px; margin-bottom:22px; border-left:5px solid var(--amber);
+  }
+  .kline { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .key { font-family:var(--mono); font-weight:800; font-size:1.02rem; color:var(--blue); }
+  .chip { font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+  .chip.gate { background:var(--amber-soft); color:var(--amber); }
+  .chip.info { background:#eef1f6; color:var(--muted); }
+  h1 { font-size:1.28rem; line-height:1.5; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:.9rem; margin-top:8px; }
+
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px;
+            padding:24px 28px; margin-bottom:20px; }
+  section > h2 { font-size:1.12rem; margin-bottom:8px; display:flex; align-items:baseline; gap:10px; }
+  section > h2 .n { font-family:var(--mono); font-size:.75rem; color:#fff; background:var(--ink);
+                    border-radius:6px; padding:2px 8px; flex:0 0 auto; }
+  section.hot { border:2px solid var(--amber); background:#fffdf9; }
+  section.hot > h2 .n { background:var(--amber); }
+  section.opt2 { opacity:.97; border-style:dashed; }
+  .plain { font-size:.95rem; margin-bottom:6px; }
+  .plain b { background:linear-gradient(transparent 62%, #fde68a 62%); }
+  p { margin:9px 0; }
+  ul { margin:9px 0 9px 22px; } li { margin:4px 0; }
+  code { font-family:var(--mono); font-size:.86em; background:#f0f3f8; padding:1px 6px; border-radius:4px; }
+  pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:12px 14px;
+        overflow-x:auto; font-family:var(--mono); font-size:.76rem; line-height:1.62; margin:0; }
+  pre .c { color:#94a3b8; }
+  pre .g { color:var(--green); font-weight:700; }
+  pre .r { color:var(--red); font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:.86rem; margin:11px 0; }
+  th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:#f3f5f9; font-size:.8rem; }
+  .ok { color:var(--green); font-weight:700; }
+  .no { color:var(--red); font-weight:700; }
+  .callout { border-left:4px solid var(--blue); background:var(--blue-soft); border-radius:9px;
+             padding:12px 16px; margin:14px 0; font-size:.92rem; }
+  .callout.a { border-left-color:var(--amber); background:var(--amber-soft); }
+  .callout.r { border-left-color:var(--red); background:var(--red-soft); }
+
+  /* 對照樣本 */
+  .cmp { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+  .cmp.one { grid-template-columns:1fr; }
+  @media (max-width:720px){ .cmp { grid-template-columns:1fr; } }
+  .cmp .box { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:#fff; }
+  .cmp .box > .cap { font-size:.78rem; font-weight:800; padding:7px 12px; font-family:var(--mono);
+                     border-bottom:1px solid var(--line); }
+  .cmp .box.now > .cap { background:var(--red-soft); color:var(--red); }
+  .cmp .box.alt > .cap { background:var(--green-soft); color:#14532d; }
+  .cmp .box.neu > .cap { background:#f3f5f9; color:var(--muted); }
+  .cmp .box pre { border:0; border-radius:0; background:#fff; }
+  .cmp .box .why { font-size:.82rem; color:var(--muted); padding:9px 12px; border-top:1px dashed var(--line); }
+
+  /* 題目 */
+  .q { border:2px solid var(--blue); border-radius:12px; background:var(--blue-soft);
+       padding:16px 18px; margin:18px 0 0; }
+  .q.answered { border-color:var(--green); background:var(--green-soft); }
+  .q-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+  .q-id { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff;
+          background:var(--blue); border-radius:5px; padding:1px 8px; }
+  .q.answered .q-id { background:var(--green); }
+  .q-title { font-weight:700; font-size:1rem; }
+  .q-opt-tag { font-size:.7rem; color:var(--muted); font-family:var(--mono); }
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  label.opt { display:flex; gap:11px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
+              border-radius:9px; padding:11px 13px; cursor:pointer; transition:all .16s; }
+  label.opt:hover { border-color:var(--blue); }
+  label.opt.sel { border-color:var(--green); background:#f6fdf8; box-shadow:0 0 0 3px var(--green-soft); }
+  label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
+  .opt-b { flex:1; }
+  .opt-t { font-weight:600; font-size:.93rem; }
+  .opt-t .star { color:var(--amber); font-weight:800; }
+  .opt-d { font-size:.83rem; color:var(--muted); line-height:1.6; margin-top:3px; }
+  .opt-cost { font-size:.8rem; color:var(--red); margin-top:3px; }
+  textarea, input.note {
+    width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line); border-radius:9px;
+    padding:10px 12px; background:#fff; resize:vertical; font-family:inherit;
+  }
+  textarea:focus, input.note:focus { outline:none; border-color:var(--blue); }
+  .note-wrap { margin-top:9px; }
+  .note-wrap span { font-size:.78rem; color:var(--muted); display:block; margin-bottom:3px; }
+
+  .gate-bar { position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+    border-top:1px solid var(--line); box-shadow:0 -4px 18px rgba(26,35,51,.09);
+    padding:13px 18px; backdrop-filter:blur(8px); z-index:50; }
+  .gate-inner { max-width:960px; margin:0 auto; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .prog { font-size:.86rem; color:var(--muted); font-family:var(--mono); }
+  .prog b { color:var(--ink); }
+  .spacer { flex:1; }
+  .gate-bar button { font:inherit; font-size:.92rem; font-weight:700; padding:10px 20px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; transition:all .16s; }
+  .gate-bar button:hover:not(:disabled) { border-color:var(--blue); }
+  .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
+  #save { background:var(--ink); color:#fff; border-color:var(--ink); }
+  #save:hover:not(:disabled) { background:#0f1725; }
+  .draft-hint { font-size:.76rem; color:var(--muted); font-family:var(--mono); }
+  .saved-msg { max-width:960px; margin:9px auto 0; font-size:.86rem; color:var(--green);
+               display:none; background:var(--green-soft); border-radius:9px; padding:9px 13px; }
+  .saved-msg.show { display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="card-head">
+    <div class="kline">
+      <span class="key">TECH-001</span>
+      <span class="chip gate">待決策</span>
+      <span class="chip info">SpecGate 自己的選型</span>
+    </div>
+    <h1>動工前的技術選型 —— 每題有「現在長怎樣 / 改了長怎樣」的實際樣本</h1>
+    <div class="sub">
+      2026-08-19 · 這頁本身就是 SpecGate 的用法示範：讀樣本 → 勾選 → 存成 JSON → 跟我說一句「選好了」。<br>
+      <b>看不懂的題目就留空</b>，最後在 §10 寫「這幾題你決定」，我會直接用建議值（標 ★ 的）。
+    </div>
+  </header>
+
+  <div id="body"></div>
+
+</div>
+
+<div class="gate-bar">
+  <div class="gate-inner">
+    <span class="prog">已答 <b id="done">0</b> / <span id="total">0</span> 題　<span class="draft-hint" id="draft"></span></span>
+    <span class="spacer"></span>
+    <button type="button" id="save">儲存選擇</button>
+  </div>
+  <div class="saved-msg" id="saved"></div>
+</div>
+
+<script>
+/* ============================================================
+   內容 —— 全部是資料。樣式與邏輯在上面，只寫一次。
+   （這頁本身就是第 2 題「內容與樣板分家」的示範）
+   ============================================================ */
+const DOC_VERSION = "2026-08-19T00:00:00+08:00";
+
+const DECISIONS = [
+{
+  id:"scope", n:1, hot:true, req:true,
+  title:"要做的是哪一個產品",
+  plain:`你桌上有兩份 prototype，它們不是同一個東西的兩個版本，是<b>兩個產品</b>。先定這題，後面九題的答案才有意義。`,
+  body:`
+  <div class="cmp">
+    <div class="box neu"><div class="cap">KAN-15.html · SpecGate</div><pre>一張 Jira 卡 = 一頁
+
+讀報告 → 答題 → approve → 存 JSON
+Claude 讀檔 → 動工
+
+要蓋的東西：一份 HTML 樣板
+工期感覺：<span class="g">2–3 天</span></pre></div>
+    <div class="box neu"><div class="cap">devloop.html · DevLoop</div><pre>① Jira 拉卡  ② 規格對話  ③ 凍結規格
+④ 產測試+程式  ⑤ 部署  ⑥ 沉澱知識圖譜
+      ↑ 下一張卡自動吃到上一張的決策
+
+要蓋的東西：server + DB + LLM 排程
+　　　　　　+ 知識圖譜 + CI 掛鉤
+工期感覺：<span class="r">2–3 個月</span></pre></div>
+  </div>
+  <div class="callout a">DevLoop 的 ④ 產程式 和 ⑤ 部署，<b>Claude Code 跟 GitHub Actions 已經在做了</b>。
+  它真正獨有的只有 ① 開卡時把過去的決策撈出來餵給我、⑥ 做完沉澱回去 ——
+  而那兩步，SpecGate 的 JSON 檔累積起來就有八成的效果。</div>`,
+  q:"這次動工要做的是哪一個",
+  options:[
+    {v:"specgate", star:true, t:"只做 SpecGate，DevLoop 當方向不當工期",
+     d:"先證明「動工前先過閘」這個流程你真的會用。二十張卡之後，知識庫要不要做會自己浮出答案。",
+     cost:"代價：短期內看不到 devloop.html 裡那個閉環動畫的效果"},
+    {v:"specgate-kg", t:"做 SpecGate，但 JSON 從第一天就照知識庫格式設計",
+     d:"每次存檔順手記下「這張卡產生了哪些決策 / 風險」。多花約半天，換之後不用回頭改格式。",
+     cost:"代價：在流程還沒被驗證前，先付了一部分知識庫的設計成本"},
+    {v:"devloop", t:"直接做 DevLoop 全閉環",
+     d:"六個階段一起蓋。適合已經很確定流程有用、而且要拿它當作品展示的情況。",
+     cost:"代價：工期跳一個量級，而且 ④⑤ 會跟現成工具打架"}
+  ]
+},
+{
+  id:"report-render-split", n:2, hot:true, req:true,
+  title:"報告的「內容」跟「長相」要不要分家",
+  plain:`現在一張卡就是一份完整 HTML —— <b>內容、CSS、JavaScript 全長在同一個 31KB 的檔案裡</b>。第二張卡你得整份複製再手改。`,
+  body:`
+  <div class="cmp">
+    <div class="box now"><div class="cap">現在 · 一卡一檔</div><pre>prototype/
+  KAN-15.html   31 KB  ← 內容+樣式+邏輯
+  KAN-16.html   31 KB  ← 複製一份再改內容
+  KAN-17.html   31 KB  ← 再複製一份
+<span class="c">                ↑ 想改按鈕顏色 = 改 N 個檔案
+                  第三張卡開始樣式會開始漂</span></pre>
+      <div class="why">好處：第一張卡最快，沒有任何額外工具。</div></div>
+    <div class="box alt"><div class="cap">分家 · 內容與樣板拆開</div><pre>reports/KAN-15.json    2 KB ← 只有內容跟題目
+reports/KAN-16.json    2 KB
+template.html         29 KB ← 樣式+邏輯，<span class="g">只有一份</span>
+build.py                    ← 合成可雙擊的單檔
+<span class="c">                ↑ 索引頁、決策匯總頁
+                  之後幾乎免費就有</span></pre>
+      <div class="why">好處：改樣式改一次；P1 索引頁、P2 決策匯總頁直接讀同一批 JSON。</div></div>
+  </div>
+  <p style="font-size:.88rem;color:var(--muted);margin-top:14px">分家之後，我每張卡只要產出這種檔案就好：</p>
+  <pre>{ "card": "KAN-15",
+  "sections": [ { "n": 3, "title": "關鍵決策點", "body": "..." } ],
+  "questions": [
+    { "id": "source-choice", "type": "single", "q": "第一個來源接誰",
+      "options": [ { "v": "a3", "label": "Remotive（有正式 API）",
+                     "cost": "英文 JD 為主" } ] } ] }</pre>
+  <div class="callout"><b>你正在看的這一頁就是這樣做的</b> —— 十題的內容是檔案下方一個 JS 陣列，樣式和儲存邏輯只寫了一次。</div>`,
+  q:"報告內容要不要跟樣板拆開",
+  options:[
+    {v:"single-file", t:"維持一卡一檔（現在這樣）",
+     d:"每張卡我就產一份完整 HTML 給你，雙擊就開。",
+     cost:"代價：改樣式要改每一份；索引頁跟匯總頁之後要重做一次"},
+    {v:"json-only", t:"分家，頁面直接讀外部 JSON",
+     d:"reports/*.json + 一份 template.html。",
+     cost:"代價：<code>file://</code> 雙擊開時，瀏覽器會擋住讀外部 JSON —— 要嘛開個小 server，要嘛不能雙擊"},
+    {v:"json-build", star:true, t:"分家，但用一個小指令合成單檔",
+     d:"我寫 JSON，跑一次 <code>python build.py KAN-16</code> 生出可雙擊的獨立 HTML。內容與樣式分開管，雙擊照樣能開。",
+     cost:"代價：多一個 build 步驟（由我跑，你不用管）"}
+  ]
+},
+{
+  id:"mobile", n:3, hot:true, req:true,
+  title:"手機到底能不能用（這題會決定 Phase 1 有沒有意義）",
+  plain:`PRD §2 寫的關鍵情境是<b>「通勤或睡前用手機讀報告、答題、按儲存」</b>。但現在的存檔方式在 iPhone 上，三個機制會壞掉兩個半。`,
+  body:`
+  <table>
+    <tr><th style="width:34%">機制</th><th>Mac 上</th><th>iPhone Safari 上</th></tr>
+    <tr><td>下載 JSON 檔</td><td class="ok">✅ 落在 ~/Downloads</td>
+        <td class="no">⚠️ 落在「檔案」App，我在電腦上讀不到</td></tr>
+    <tr><td>複製到剪貼簿</td><td class="ok">✅ 正常</td>
+        <td class="no">⚠️ 目前寫在非直接點擊的路徑上，Safari 常擋掉</td></tr>
+    <tr><td>localStorage 草稿</td><td class="ok">✅ 一直在</td>
+        <td class="no">❌ 七天沒再開這頁，Safari 會整包清掉</td></tr>
+  </table>
+  <div class="callout r">也就是說：<b>Phase 1 的靜態檔驗證不了 PRD 最想驗證的那個情境</b>。
+  PRD §10 第 4 題問「下載到 ~/Downloads 夠不夠用」—— 只要主情境是手機，答案已經是不夠。</div>`,
+  q:"手機這條路怎麼走",
+  options:[
+    {v:"clipboard-first", star:true, t:"手機版改成「答完按一顆鈕複製 → 貼進跟我的對話」",
+     d:"不靠檔案、不靠 ~/Downloads。按鈕直接觸發複製（這樣 Safari 不會擋），你貼進對話我就讀得到。幾乎零成本。",
+     cost:"代價：草稿還是可能被 Safari 清掉 —— 所以手機上要一次答完，別中途關"},
+    {v:"mac-only", t:"先只在 Mac 上用，手機情境延到 Phase 2",
+     d:"承認 Phase 1 驗證的是「流程本身有沒有用」，不是「手機順不順」。",
+     cost:"代價：通勤時間用不上，等於審核只能發生在電腦前"},
+    {v:"local-service", t:"現在就跳 Phase 2：本機小服務 + Tailscale，手機直接存回電腦",
+     d:"FastAPI 一支，手機連進來 POST，答案直接落在專案資料夾。",
+     cost:"代價：多了「服務要跑著」這件事；流程還沒驗證就先付基礎建設"}
+  ]
+},
+{
+  id:"answers-home", n:4, req:true,
+  title:"答案檔要放哪、要不要進 git",
+  plain:`現在存到 <code>~/Downloads</code>。那是暫存區，你會定期清空。但這些紀錄的整個賣點是<b>「三週後回頭看」「面試時拿得出來」</b>。`,
+  body:`
+  <div class="cmp">
+    <div class="box now"><div class="cap">現在 · 下載資料夾</div><pre>~/Downloads/
+  KAN-15-review.json
+  KAN-15-review (1).json   <span class="c">← 重存一次就多一份</span>
+  KAN-15-review (2).json   <span class="c">← 哪份是最後的？</span>
+  ...
+<span class="r">  三個月後：被你清掉了</span></pre></div>
+    <div class="box alt"><div class="cap">改成 · 專案內 + git</div><pre>SpecGate/
+  reviews/
+    KAN-15.json
+    KAN-16.json
+<span class="g">  git log 看得到每次決策是什麼時候做的
+  重存會覆蓋，永遠只有一份最新的</span></pre></div>
+  </div>
+  <div class="callout a"><b>順帶一提：<code>SpecGate/</code> 現在還不是 git repo。</b>
+  決策紀錄要能回溯，<code>git init</code> 是這裡面最便宜的一步。</div>`,
+  q:"答案檔的永久位置",
+  options:[
+    {v:"downloads", t:"維持 ~/Downloads",
+     d:"不改任何東西。",
+     cost:"代價：紀錄會隨清理消失，等於決策留痕這件事沒真的成立"},
+    {v:"repo-git", star:true, t:"放 SpecGate/reviews/，並且 git init 管起來",
+     d:"下載完由我幫你搬進專案並 commit。JSON 檔是唯一的真相來源，之後就算做了資料庫也只當索引。",
+     cost:"代價：Phase 1 每次多一個「幫我搬進去」的動作"},
+    {v:"repo-later", t:"位置先定 reviews/，但等 Phase 2 服務直接寫檔再搬",
+     d:"先把路徑講好，實際搬遷延後。",
+     cost:"代價：中間這段時間的紀錄還是散在下載資料夾"}
+  ]
+},
+{
+  id:"question-id", n:5, req:true,
+  title:"題目的編號怎麼取",
+  plain:`現在題目叫 A、B、C、D，每張卡都從 A 開始。問題是<b>報告改版後，「A」可能已經換成完全不同的問題</b>，但檔案裡看起來還是 A。`,
+  body:`
+  <div class="cmp">
+    <div class="box now"><div class="cap">現在 · 字母編號</div><pre>v1  {"id":"<span class="r">A</span>", "question":"第一個來源接誰"}
+    → 你答了 A3
+
+v2  {"id":"<span class="r">A</span>", "question":"要不要加快取"}
+    → 你答了 yes
+
+<span class="c">   兩份檔案裡都叫 A。之後想比對
+   「他批准的跟最後做的一不一樣」時，
+   看不出這是不是同一題。</span></pre></div>
+    <div class="box alt"><div class="cap">改成 · 語義編號</div><pre>v1  {"id":"<span class="g">source-choice</span>",  "question":"第一個來源接誰"}
+
+v2  {"id":"<span class="g">source-choice</span>",  "question":"第一個來源接誰（補充後）"}
+    {"id":"<span class="g">cache-strategy</span>", "question":"要不要加快取"}
+
+<span class="c">   一眼看出：哪題還是同一題、
+   哪題是這版才新增的。</span></pre></div>
+  </div>
+  <div class="callout">PRD §6 說 <code>report_version</code> 存在的理由是「查得出斷點」。
+  但版本號只告訴你版本不同，<b>不告訴你哪一題還是同一題</b> —— 補上這塊的就是穩定的 id。
+  現在做很便宜，累積十張卡之後再改很痛。</div>`,
+  q:"題目 id 要用哪種",
+  options:[
+    {v:"letters", t:"維持 A / B / C（現在這樣）",
+     d:"最省事。",
+     cost:"代價：改版後對不起來；跨卡也不唯一，之後要做決策匯總會很難串"},
+    {v:"slug", star:true, t:"改成語義 slug，例如 source-choice、tenacity-dep",
+     d:"題目換了就換 id、題目還在就沿用 id。頁面上仍然顯示 A/B/C 給你讀，只是存檔時用 slug。",
+     cost:"代價：我出報告時要多想一秒該叫什麼名字"},
+    {v:"card-letter", t:"卡號 + 字母，例如 KAN-15.A",
+     d:"至少跨卡唯一了。",
+     cost:"代價：同一張卡改版後還是對不起來 —— 只解決一半"}
+  ]
+},
+{
+  id:"defer", n:6, req:true,
+  title:"沒意見的題目，能不能跳過",
+  plain:`PRD §10 自己問的題。現在<b>沒答完就不能按 approve</b>。但有些題你可能真的沒意見，就是想丟給我決定。`,
+  body:`
+  <div class="cmp">
+    <div class="box now"><div class="cap">現在 · 一題都不能少</div><pre>已答 2 / 3    [ approve 動工 ]  <span class="c">← 灰的，按不下去</span>
+
+<span class="r">你卡在一題「其實沒意見」的題目上。
+最後你會隨便勾一個 —— 那比跳過更糟，
+因為紀錄上看起來像你認真選過。</span></pre></div>
+    <div class="box alt"><div class="cap">改成 · 跳過，但要留下痕跡</div><pre>{ "id": "tenacity-dep",
+  "value": null,
+  <span class="g">"deferred": true,</span>
+  "note": "沒意見，你決定" }
+
+<span class="g">→ approve 解鎖，我照建議值做
+→ 之後可以統計「你跳過幾題」</span>
+<span class="c">   跳太多 = 這道閘門在當橡皮圖章，
+   那是流程本身該修的訊號。</span></pre></div>
+  </div>
+  <div class="callout a">重點是「跳過」<b>要被記下來，不能默默放行</b>。
+  這個欄位現在留好，比之後改 schema 版本便宜太多。</div>`,
+  q:"要不要允許跳過",
+  options:[
+    {v:"no-skip", t:"不能跳過，每題都得正面回答（現在這樣）",
+     d:"強迫每個決策點都被看過。",
+     cost:"代價：會逼出「隨便勾一個」的行為，紀錄反而失真"},
+    {v:"defer-flag", star:true, t:"可以跳過，但存成 deferred: true 留痕",
+     d:"按「交給你決定」，我照建議值執行，紀錄上看得出這是你放權的、不是你選的。",
+     cost:"代價：要忍住不要每題都跳"},
+    {v:"defer-limit", t:"可以跳過，但一張卡最多跳一題",
+     d:"給一點彈性又不至於整張放水。",
+     cost:"代價：多一條規則要記；上限數字是憑感覺定的"}
+  ]
+},
+{
+  id:"jira", n:7, req:true,
+  title:"Jira 那一段，誰去打",
+  plain:`頁面上要顯示卡片狀態、approve 之後把卡移到「進行中」。問題不是要不要做，是<b>誰去呼叫 Jira</b>。`,
+  body:`
+  <div class="cmp">
+    <div class="box alt"><div class="cap">A · 由我用 Rovo MCP 做</div><pre>你按 approve → 存 JSON
+你說「KAN-15 答完了」
+我讀檔 → 用 Rovo MCP 把卡移到進行中 → 開工
+
+<span class="g">SpecGate 完全不碰 Jira
+沒有 token 要保管、不會過期
+P1 的「Jira 連動」從功能降級成一句話</span></pre></div>
+    <div class="box neu"><div class="cap">B · SpecGate 自己接 Jira API</div><pre>SpecGate 需要：
+  · 一組 Jira API token（要存、會過期）
+  · HTTP client + 錯誤處理 + 重試
+  · 一個一直跑著的行程
+<span class="c">    （靜態 HTML 做不到這件事）</span>
+
+換來：頁面上即時顯示卡片目前狀態</pre></div>
+  </div>`,
+  q:"Jira 整合走哪條",
+  options:[
+    {v:"via-claude", star:true, t:"由我在對話裡用 Rovo MCP 做，SpecGate 不碰 Jira",
+     d:"我本來就是這個流程的執行端，順手做掉。",
+     cost:"代價：頁面上看到的卡片狀態是產出當下的快照，不是即時的"},
+    {v:"own-client", t:"SpecGate 自己接 Jira API",
+     d:"頁面即時顯示狀態，不依賴我開著。",
+     cost:"代價：token 管理 + 要有一個跑著的服務 —— 等於直接進 Phase 2"},
+    {v:"none", t:"Phase 1 完全不連 Jira",
+     d:"頁面上放一個連結就好。",
+     cost:"代價：卡片狀態要手動同步，容易忘"}
+  ]
+},
+{
+  id:"llm-runtime", n:8, req:false, dl:true,
+  title:"（DevLoop 才要答）LLM 從哪裡被呼叫",
+  plain:`DevLoop 的 ①②④ 都要呼叫模型。差別在於：<b>這個系統會不會自己跑</b>。`,
+  body:`
+  <div class="cmp">
+    <div class="box neu"><div class="cap">A · 在 Claude Code session 內</div><pre>你開著對話，我來跑
+
+<span class="g">零基礎建設、零金鑰、零成本管理</span>
+<span class="r">你不開對話，什麼都不會發生
+無法排程、無法自動化</span></pre></div>
+    <div class="box neu"><div class="cap">B · DevLoop 自己接 Anthropic API</div><pre>系統自己呼叫模型
+
+<span class="g">能排程（早上八點自動掃 Jira 新卡）</span>
+<span class="r">要管金鑰、要記成本、要處理重試
+要有一個一直跑著的行程</span></pre></div>
+  </div>`,
+  q:"LLM 的呼叫端",
+  options:[
+    {v:"in-session", star:true, t:"在 Claude Code session 內，由我跑",
+     d:"先驗證流程，不要先蓋機房。", cost:"代價：不能排程自動跑"},
+    {v:"own-api", t:"DevLoop 自己接 API",
+     d:"換來自動化。", cost:"代價：金鑰、成本帳、重試、一個常駐行程"}
+  ]
+},
+{
+  id:"kg-store", n:9, req:false, dl:true,
+  title:"（DevLoop 才要答）知識圖譜存在哪",
+  plain:`devloop.html 那張圖看起來很像需要一個圖資料庫。<b>以你的量級，不需要。</b>`,
+  body:`
+  <pre>{ "nodes": [
+    { "id": "D-011", "type": "決策", "from": "KAN-15",
+      "text": "來源避開有防護的站" },
+    { "id": "R-007", "type": "風險", "from": "KAN-15",
+      "text": "中文 JD 品質未驗", "owner": "KAN-16" } ],
+  "edges": [ ["KAN-15","D-011"], ["D-011","KAN-16"] ] }</pre>
+  <div class="callout">二十張卡、大概一百個節點。上面這個 JSON 檔就夠了，而且我可以直接讀。
+  <b>要到需要「跨三跳查詢」的時候再換</b> —— 那大概是團隊版才會發生的事。</div>`,
+  q:"知識圖譜怎麼存",
+  options:[
+    {v:"json", star:true, t:"一個 JSON 檔（節點清單 + 邊清單）",
+     d:"git 管得動、我讀得懂、可以 diff。", cost:"代價：上千節點之後查詢會變慢"},
+    {v:"sqlite", t:"SQLite",
+     d:"有查詢能力，還是單檔。", cost:"代價：不能 diff，我要多一層才讀得到"},
+    {v:"graphdb", t:"圖資料庫（Neo4j 之類）",
+     d:"真正的圖查詢。", cost:"代價：為了一百個節點養一個資料庫"}
+  ]
+},
+{
+  id:"build-deploy", n:10, req:false, dl:true,
+  title:"（DevLoop 才要答）④產程式 ⑤部署 這兩步自己做嗎",
+  plain:`devloop.html 裡的第 ④⑤ 步 —— 產測試、寫程式、跑 pipeline 部署。<b>這兩件事現在已經有東西在做了。</b>`,
+  body:`
+  <table>
+    <tr><th style="width:30%">步驟</th><th>現在誰在做</th><th>DevLoop 自己做會怎樣</th></tr>
+    <tr><td>④ 產測試 + 寫程式</td><td>Claude Code</td><td class="no">重做一次，而且做得比較差</td></tr>
+    <tr><td>⑤ 跑 pipeline 部署</td><td>GitHub Actions</td><td class="no">重做一次，而且要維護</td></tr>
+    <tr><td>① 撈知識庫餵給 LLM</td><td class="no">沒人在做</td><td class="ok">這才是它獨有的價值</td></tr>
+    <tr><td>⑥ 決策沉澱回知識庫</td><td class="no">沒人在做</td><td class="ok">這才是它獨有的價值</td></tr>
+  </table>
+  <div class="callout a">建議：④⑤ <b>只做「掛鉤」不做「實作」</b> —— 記錄「這張卡跑了哪次 CI、結果是什麼」，
+  實際的產程式與部署留給現成工具。閉環照樣是閉的，工期少一大半。</div>`,
+  q:"④⑤ 兩步的做法",
+  options:[
+    {v:"hook-only", star:true, t:"只掛鉤、只記錄，實作交給 Claude Code + GitHub Actions",
+     d:"閉環還是閉的，工期砍一半以上。", cost:"代價：畫面上沒有 devloop.html 那種「系統自己在寫程式」的展示效果"},
+    {v:"build-own", t:"DevLoop 自己做一套",
+     d:"展示效果最完整。", cost:"代價：跟現成工具打架，而且要長期維護"}
+  ]
+}
+];
+
+/* ============================================================
+   渲染
+   ============================================================ */
+const LSKEY = "specgate-tech-choices-v1";
+const answers = {};   // id -> {choice, note}
+
+function optHTML(d, o, i) {
+  return '<label class="opt" data-q="' + d.id + '" data-v="' + o.v + '">'
+    + '<input type="radio" name="q_' + d.id + '" value="' + o.v + '">'
+    + '<span class="opt-b">'
+    +   '<span class="opt-t">' + (o.star ? '<span class="star">★ </span>' : '') + o.t + '</span>'
+    +   '<span class="opt-d">' + o.d + '</span>'
+    +   (o.cost ? '<span class="opt-cost">' + o.cost + '</span>' : '')
+    + '</span></label>';
+}
+
+function render() {
+  let h = "";
+  DECISIONS.forEach(d => {
+    h += '<section class="' + (d.hot ? 'hot' : '') + (d.dl ? ' opt2' : '') + '" id="s-' + d.id + '">'
+      +  '<h2><span class="n">' + String(d.n).padStart(2, '0') + '</span>' + d.title + '</h2>'
+      +  '<div class="plain">' + d.plain + '</div>'
+      +  d.body
+      +  '<div class="q" data-qid="' + d.id + '">'
+      +    '<div class="q-head"><span class="q-id">' + d.id + '</span>'
+      +      '<span class="q-title">' + d.q + '</span>'
+      +      (d.req ? '' : '<span class="q-opt-tag">選填</span>')
+      +    '</div>'
+      +    '<div class="opts">' + d.options.map((o, i) => optHTML(d, o, i)).join('') + '</div>'
+      +    '<div class="note-wrap"><span>備註（可留空）</span>'
+      +      '<input class="note" data-note="' + d.id + '" placeholder="有條件、有疑問、或想選別的就寫這裡"></div>'
+      +  '</div></section>';
+  });
+  h += '<section><h2><span class="n">11</span>其他想法</h2>'
+    +  '<div class="plain">上面哪幾題你想直接用 ★ 建議值、或有沒有我沒問到的東西。</div>'
+    +  '<div class="q" data-qid="free"><div class="q-head"><span class="q-id">free</span>'
+    +  '<span class="q-title">補充</span><span class="q-opt-tag">選填</span></div>'
+    +  '<textarea id="freetext" rows="4" placeholder="例：8-10 題我沒意見，用你的建議。另外我想先看到索引頁。"></textarea>'
+    +  '</div></section>';
+  document.getElementById('body').innerHTML = h;
+}
+
+function paint() {
+  DECISIONS.forEach(d => {
+    const box = document.querySelector('.q[data-qid="' + d.id + '"]');
+    const has = !!(answers[d.id] && answers[d.id].choice);
+    box.classList.toggle('answered', has);
+    box.querySelectorAll('label.opt').forEach(l => {
+      l.classList.toggle('sel', has && l.dataset.v === answers[d.id].choice);
+    });
+  });
+  const req = DECISIONS.filter(d => d.req);
+  const done = req.filter(d => answers[d.id] && answers[d.id].choice).length;
+  document.getElementById('done').textContent = done;
+  document.getElementById('total').textContent = req.length;
+}
+
+function saveDraft() {
+  localStorage.setItem(LSKEY, JSON.stringify({
+    v: DOC_VERSION, answers, free: document.getElementById('freetext').value,
+    at: new Date().toISOString()
+  }));
+  document.getElementById('draft').textContent =
+    '· 草稿已存 ' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+function loadDraft() {
+  const s = localStorage.getItem(LSKEY); if (!s) return;
+  try {
+    const d = JSON.parse(s); if (d.v !== DOC_VERSION) return;
+    Object.assign(answers, d.answers || {});
+    Object.keys(answers).forEach(id => {
+      const a = answers[id];
+      if (a.choice) {
+        const el = document.querySelector('input[name="q_' + id + '"][value="' + a.choice + '"]');
+        if (el) el.checked = true;
+      }
+      if (a.note) {
+        const n = document.querySelector('input[data-note="' + id + '"]');
+        if (n) n.value = a.note;
+      }
+    });
+    if (d.free) document.getElementById('freetext').value = d.free;
+  } catch (e) { /* 草稿壞掉就忽略 */ }
+}
+
+function buildPayload() {
+  return {
+    schema_version: 1,
+    doc: "specgate-tech-choices",
+    title: "SpecGate 技術選型閘門 TECH-001",
+    doc_version: DOC_VERSION,
+    reviewed_at: new Date().toISOString(),
+    reviewer: "sam",
+    answers: DECISIONS.map(d => {
+      const a = answers[d.id] || {};
+      const o = d.options.filter(x => x.v === a.choice)[0];
+      return {
+        id: d.id,
+        question: d.q,
+        choice: a.choice || null,
+        choice_label: o ? o.t : null,
+        deferred: !a.choice,
+        note: a.note || ""
+      };
+    }),
+    free_text: document.getElementById('freetext').value
+  };
+}
+
+/* ---------- 事件 ---------- */
+render();
+
+document.addEventListener('change', e => {
+  const r = e.target.closest('input[type=radio]');
+  if (!r) return;
+  const id = r.closest('.q').dataset.qid;
+  answers[id] = answers[id] || {};
+  answers[id].choice = r.value;
+  paint(); saveDraft();
+});
+
+document.addEventListener('input', e => {
+  const n = e.target.closest('input.note');
+  if (n) { const id = n.dataset.note; answers[id] = answers[id] || {}; answers[id].note = n.value; saveDraft(); return; }
+  if (e.target.id === 'freetext') saveDraft();
+});
+
+document.getElementById('save').onclick = () => {
+  const json = JSON.stringify(buildPayload(), null, 2);
+
+  // 剪貼簿：直接在點擊當下寫入（手機 Safari 才不會擋）
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json); copied = true; }
+  } catch (err) { copied = false; }
+  if (!copied) {
+    const ta = document.createElement('textarea');
+    ta.value = json; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { copied = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+  }
+
+  // 下載（桌機用；手機上會落在「檔案」App，這正是第 3 題在講的事）
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tech-choices-review.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+
+  const req = DECISIONS.filter(d => d.req);
+  const miss = req.filter(d => !(answers[d.id] && answers[d.id].choice)).map(d => d.n);
+  const m = document.getElementById('saved');
+  m.innerHTML = '✅ 已存成 <code>~/Downloads/tech-choices-review.json</code>'
+    + (copied ? '，<b>同時複製到剪貼簿了</b>（手機就直接貼進對話給我）' : '')
+    + (miss.length ? '<br>⚠️ 第 ' + miss.join('、') + ' 題還沒選 —— 沒選的我會記成「交給你決定」，照 ★ 建議值做。' : '')
+    + '<br>跟我說一句「<b>選好了</b>」，我讀檔就開工。';
+  m.classList.add('show');
+};
+
+loadDraft(); paint();
+</script>
+</body>
+</html>

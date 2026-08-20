@@ -271,7 +271,7 @@ def freeze(session: Session, report: Report) -> FreezeOutcome:
 
 
 def report_as_json(session: Session, report: Report) -> str:
-    """決策紀錄的可攜形式 —— 跟 SpecGate 那幾份 JSON 是同一個形狀。"""
+    """決策紀錄的可攜形式 —— 跟 docs/decisions/*.json 是同一個形狀。"""
     card = session.get(Card, report.card_id)
     by_slug = answers_of(session, report)
     payload = {

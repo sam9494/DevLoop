@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpecGate 技術選型閘門 · 第二輪</title>
+<style>
+  :root {
+    --bg:#f7f8fa; --card:#fff; --ink:#1a2333; --muted:#5b6577; --line:#e3e7ee;
+    --blue:#2563eb; --blue-soft:#eaf1fe; --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#dc2626; --red-soft:#fdecec; --amber:#d97706; --amber-soft:#fdf1e7;
+    --purple:#8b5cf6; --purple-soft:#f3eeff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink); line-height:1.85;
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    padding:30px 18px 190px;
+  }
+  .wrap { max-width:960px; margin:0 auto; }
+
+  header.card-head {
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:22px 26px; margin-bottom:22px; border-left:5px solid var(--amber);
+  }
+  .kline { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .key { font-family:var(--mono); font-weight:800; font-size:1.02rem; color:var(--blue); }
+  .chip { font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+  .chip.gate { background:var(--amber-soft); color:var(--amber); }
+  .chip.info { background:#eef1f6; color:var(--muted); }
+  h1 { font-size:1.28rem; line-height:1.5; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:.9rem; margin-top:8px; }
+
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px;
+            padding:24px 28px; margin-bottom:20px; }
+  section > h2 { font-size:1.12rem; margin-bottom:8px; display:flex; align-items:baseline; gap:10px; }
+  section > h2 .n { font-family:var(--mono); font-size:.75rem; color:#fff; background:var(--ink);
+                    border-radius:6px; padding:2px 8px; flex:0 0 auto; }
+  section.hot { border:2px solid var(--amber); background:#fffdf9; }
+  section.hot > h2 .n { background:var(--amber); }
+  section.opt2 { opacity:.97; border-style:dashed; }
+  .plain { font-size:.95rem; margin-bottom:6px; }
+  .plain b { background:linear-gradient(transparent 62%, #fde68a 62%); }
+  p { margin:9px 0; }
+  ul { margin:9px 0 9px 22px; } li { margin:4px 0; }
+  code { font-family:var(--mono); font-size:.86em; background:#f0f3f8; padding:1px 6px; border-radius:4px; }
+  pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:12px 14px;
+        overflow-x:auto; font-family:var(--mono); font-size:.76rem; line-height:1.62; margin:0; }
+  pre .c { color:#94a3b8; }
+  pre .g { color:var(--green); font-weight:700; }
+  pre .r { color:var(--red); font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:.86rem; margin:11px 0; }
+  th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; }
+  th { background:#f3f5f9; font-size:.8rem; }
+  .ok { color:var(--green); font-weight:700; }
+  .no { color:var(--red); font-weight:700; }
+  .callout { border-left:4px solid var(--blue); background:var(--blue-soft); border-radius:9px;
+             padding:12px 16px; margin:14px 0; font-size:.92rem; }
+  .callout.a { border-left-color:var(--amber); background:var(--amber-soft); }
+  .callout.r { border-left-color:var(--red); background:var(--red-soft); }
+
+  /* 對照樣本 */
+  .cmp { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; }
+  .cmp.one { grid-template-columns:1fr; }
+  @media (max-width:720px){ .cmp { grid-template-columns:1fr; } }
+  .cmp .box { border:1px solid var(--line); border-radius:11px; overflow:hidden; background:#fff; }
+  .cmp .box > .cap { font-size:.78rem; font-weight:800; padding:7px 12px; font-family:var(--mono);
+                     border-bottom:1px solid var(--line); }
+  .cmp .box.now > .cap { background:var(--red-soft); color:var(--red); }
+  .cmp .box.alt > .cap { background:var(--green-soft); color:#14532d; }
+  .cmp .box.neu > .cap { background:#f3f5f9; color:var(--muted); }
+  .cmp .box pre { border:0; border-radius:0; background:#fff; }
+  .cmp .box .why { font-size:.82rem; color:var(--muted); padding:9px 12px; border-top:1px dashed var(--line); }
+
+  /* 題目 */
+  .q { border:2px solid var(--blue); border-radius:12px; background:var(--blue-soft);
+       padding:16px 18px; margin:18px 0 0; }
+  .q.answered { border-color:var(--green); background:var(--green-soft); }
+  .q-head { display:flex; align-items:center; gap:9px; margin-bottom:9px; flex-wrap:wrap; }
+  .q-id { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff;
+          background:var(--blue); border-radius:5px; padding:1px 8px; }
+  .q.answered .q-id { background:var(--green); }
+  .q-title { font-weight:700; font-size:1rem; }
+  .q-opt-tag { font-size:.7rem; color:var(--muted); font-family:var(--mono); }
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  label.opt { display:flex; gap:11px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
+              border-radius:9px; padding:11px 13px; cursor:pointer; transition:all .16s; }
+  label.opt:hover { border-color:var(--blue); }
+  label.opt.sel { border-color:var(--green); background:#f6fdf8; box-shadow:0 0 0 3px var(--green-soft); }
+  label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
+  .opt-b { flex:1; }
+  .opt-t { font-weight:600; font-size:.93rem; }
+  .opt-t .star { color:var(--amber); font-weight:800; }
+  .opt-d { font-size:.83rem; color:var(--muted); line-height:1.6; margin-top:3px; }
+  .opt-cost { font-size:.8rem; color:var(--red); margin-top:3px; }
+  textarea, input.note {
+    width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line); border-radius:9px;
+    padding:10px 12px; background:#fff; resize:vertical; font-family:inherit;
+  }
+  textarea:focus, input.note:focus { outline:none; border-color:var(--blue); }
+  .note-wrap { margin-top:9px; }
+  .note-wrap span { font-size:.78rem; color:var(--muted); display:block; margin-bottom:3px; }
+
+  .gate-bar { position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+    border-top:1px solid var(--line); box-shadow:0 -4px 18px rgba(26,35,51,.09);
+    padding:13px 18px; backdrop-filter:blur(8px); z-index:50; }
+  .gate-inner { max-width:960px; margin:0 auto; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .prog { font-size:.86rem; color:var(--muted); font-family:var(--mono); }
+  .prog b { color:var(--ink); }
+  .spacer { flex:1; }
+  .gate-bar button { font:inherit; font-size:.92rem; font-weight:700; padding:10px 20px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; transition:all .16s; }
+  .gate-bar button:hover:not(:disabled) { border-color:var(--blue); }
+  .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
+  #save { background:var(--ink); color:#fff; border-color:var(--ink); }
+  #save:hover:not(:disabled) { background:#0f1725; }
+  .draft-hint { font-size:.76rem; color:var(--muted); font-family:var(--mono); }
+  .saved-msg { max-width:960px; margin:9px auto 0; font-size:.86rem; color:var(--green);
+               display:none; background:var(--green-soft); border-radius:9px; padding:9px 13px; }
+  .saved-msg.show { display:block; }
+  label.opt.none { border-style:dashed; }
+  label.opt.none.sel { border-color:var(--amber); background:#fffdf6; box-shadow:0 0 0 3px var(--amber-soft); }
+  .note-wrap.must span { color:var(--amber); font-weight:700; }
+  .note-wrap.must input.note { border-color:var(--amber); background:#fffdf6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="card-head">
+    <div class="kline">
+      <span class="key">TECH-002</span>
+      <span class="chip gate">待決策</span>
+      <span class="chip info">接續 TECH-001</span>
+    </div>
+    <h1>第二輪 —— 你選了 DevLoop 全閉環之後，還有五題定不下來就動不了工</h1>
+    <div class="sub">
+      2026-08-19 · 第 1、2、4 題是<b>你的備註問出來的新問題</b>（你寫「要存入資料庫」「call 本地 claude code」，
+      但沒說哪個資料庫、怎麼 call）。第 5 題是上一輪露出來的一個矛盾。<br>
+      <b>這次每題都多了一個「以上皆非」</b> —— 選它就必須寫下你要的是什麼。那正是第 5 題在問的東西。
+    </div>
+  </header>
+
+  <div id="body"></div>
+
+</div>
+
+<div class="gate-bar">
+  <div class="gate-inner">
+    <span class="prog">已答 <b id="done">0</b> / <span id="total">0</span> 題　<span class="draft-hint" id="draft"></span></span>
+    <span class="spacer"></span>
+    <button type="button" id="save">儲存選擇</button>
+  </div>
+  <div class="saved-msg" id="saved"></div>
+</div>
+
+<script>
+const DOC_VERSION = "2026-08-19T17:00:00+08:00";
+
+const DECISIONS = [
+{
+  id:"db-choice", n:1, hot:true, req:true,
+  title:"主資料庫用哪一個（一個還是兩個）",
+  plain:`你在三題的備註裡都寫「要存入資料庫」，但沒說是哪一個 —— <b>而你同時又選了 Neo4j</b>。
+         所以真正要決定的是：整套系統養一個資料庫還是兩個。`,
+  body:`
+  <div class="cmp one">
+    <div class="box neu"><div class="cap">A · 只有 Neo4j，什麼都存在圖裡</div><pre>(:Card     {key:"KAN-15", status:"gate"})
+(:Report   {version:"v1.0", body:"..."})
+(:Answer   {choice:"a3", note:"104 之後再說"})
+(:Decision {id:"D-011", text:"來源避開有防護的站"})
+
+(:Card)-[:HAS_REPORT]-&gt;(:Report)-[:HAS_ANSWER]-&gt;(:Answer)
+(:Card)-[:PRODUCED]-&gt;(:Decision)-[:FEEDS]-&gt;(:Card)</pre>
+      <div class="why"><b>好</b>：只有一個東西要維護、關聯天生就在。<br>
+      <b>壞</b>：「列出所有待審的卡，依建立時間排序」這種純表格查詢，用 Cypher 寫會很彆扭；
+      而且 90% 的日常查詢都是這一類。</div></div>
+  </div>
+  <div class="cmp one">
+    <div class="box alt"><div class="cap">B · Postgres 當主庫 + Neo4j 只放關聯</div><pre>Postgres（內容住這裡）        Neo4j（只放「誰連到誰」）
+  cards                         (:Card)-[:PRODUCED]-&gt;(:Decision)
+  reports                       (:Decision)-[:FEEDS]-&gt;(:Card)
+  answers                       (:Card)-[:RAISED]-&gt;(:Risk)
+  jobs / runs                   節點上只有 id，內容回 Postgres 拿
+
+規則：Postgres 是唯一真相，Neo4j 隨時可以整個砍掉重建</pre>
+      <div class="why"><b>好</b>：各做各擅長的；圖壞了不會掉資料。<br>
+      <b>壞</b>：兩個服務要跑，寫入時要同步兩邊（一個 transaction 寫完 PG 再補圖）。</div></div>
+  </div>
+  <div class="cmp one">
+    <div class="box neu"><div class="cap">C · 先只用 Postgres，圖當成一張表</div><pre>Postgres
+  cards / reports / answers
+  edges(from_id, to_id, kind)   ← 圖先當普通表存
+
+要畫 devloop.html 那張圖時：
+  SELECT * FROM edges  →  丟給前端用 SVG 畫
+  （100 個節點，瀏覽器畫起來毫無壓力）
+
+之後真的需要「跨三跳查詢」時，
+edges 表可以一行指令灌進 Neo4j</pre>
+      <div class="why"><b>好</b>：一個服務就夠，而且資料形狀已經是圖，之後搬家不痛。<br>
+      <b>壞</b>：現在沒有真正的圖查詢能力（但你目前也還沒有需要它的查詢）。</div></div>
+  </div>`,
+  q:"資料庫怎麼配",
+  options:[
+    {v:"neo4j-only", t:"只用 Neo4j，全部存圖裡",
+     d:"一個服務、一種查詢語言。",
+     cost:"代價：卡片列表、答案紀錄這種天生是表格的東西，查起來會很不順手"},
+    {v:"pg-neo4j", star:true, t:"Postgres 主庫 + Neo4j 圖層",
+     d:"符合你已經選的 Neo4j，同時讓日常查詢正常。Postgres 是唯一真相，Neo4j 可重建。",
+     cost:"代價：兩個服務要跑、寫入要同步兩邊"},
+    {v:"pg-only", t:"先只用 Postgres，edges 當表存，Neo4j 之後再接",
+     d:"資料形狀就是圖，只是暫時住在關聯式表裡。之後灌進 Neo4j 是一行指令。",
+     cost:"代價：暫時沒有真正的圖查詢；devloop 那張圖改用前端 SVG 畫"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的",
+     d:"寫在下面的備註裡，我照你寫的做。",
+     cost:""}
+  ]
+},
+{
+  id:"claude-invoke", n:2, hot:true, req:true,
+  title:"服務怎麼呼叫本地的 Claude Code",
+  plain:`你寫「在我的服務 call 本地的 claude code」。<b>這是我上一輪沒列到的選項，而且它是對的</b> ——
+         不用 API 金鑰、不用另外算成本，直接用你已經付費的訂閱。剩下要定的是「怎麼 call」。`,
+  body:`
+  <p style="font-size:.88rem;color:var(--muted)">Claude Code 有 headless 模式，服務可以直接開子行程：</p>
+  <pre>claude -p "讀 reviews/KAN-15.json，照裡面已批准的決定實作" \\
+       --output-format stream-json \\
+       --permission-mode acceptEdits \\
+       --cwd /Users/sam/Desktop/JobHunting/JobRadar</pre>
+  <div class="cmp">
+    <div class="box now"><div class="cap">A · 同步呼叫，HTTP 卡著等</div><pre>POST /cards/KAN-15/build
+   └ 服務開子行程，卡在那裡等
+     ......
+     5 分鐘後才回應
+
+<span class="r">HTTP 早就逾時了
+兩張卡同時跑會互相打架
+中途看不到任何進度</span></pre></div>
+    <div class="box alt"><div class="cap">B · 丟進工作佇列，背景跑</div><pre>POST /cards/KAN-15/build
+   └ 立刻回 {"job_id": 42}
+
+背景 worker：
+   開 claude -p，把 stdout 一行一行寫進 DB
+
+GET /jobs/42
+   └ 看得到即時輸出、目前跑到哪
+
+<span class="g">不會逾時、看得到進度、可以排隊</span></pre></div>
+  </div>
+  <div class="callout">B 不需要 Celery 或 Redis。<b>一支 Python thread + 一張 jobs 表就夠了</b> ——
+  你的併發量是「一次一張卡」，不是一秒一千個請求。</div>`,
+  q:"服務呼叫 Claude Code 的方式",
+  options:[
+    {v:"sync", t:"同步呼叫，等它跑完再回應",
+     d:"程式最好寫。",
+     cost:"代價：HTTP 逾時、無法併發、跑的時候看不到進度"},
+    {v:"job-queue", star:true, t:"丟進工作佇列，背景跑，前端輪詢進度",
+     d:"一支 thread + 一張 jobs 表。stdout 串進 DB，頁面上看得到 Claude Code 正在做什麼。",
+     cost:"代價：多一個 worker 的概念；要處理「卡住的 job 怎麼收掉」"},
+    {v:"prepare-only", t:"服務不自動跑，只把 prompt 準備好讓你自己貼",
+     d:"服務產出「該對 Claude Code 說什麼」，你複製貼上。零風險、零併發問題。",
+     cost:"代價：閉環中間斷一截，需要你手動接"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的",
+     d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"neo4j-run", n:3, req:true,
+  title:"Neo4j 住在哪",
+  plain:`選了 Neo4j 就得決定它跑在什麼地方。這題只影響「你每天要不要多開一個東西」。`,
+  body:`
+  <table>
+    <tr><th style="width:28%">做法</th><th>怎麼起</th><th>要付出什麼</th></tr>
+    <tr><td>Docker Desktop 本機</td><td><code>docker compose up -d</code></td>
+        <td>要開著 Docker Desktop（吃約 2GB 記憶體）；資料在你自己機器上</td></tr>
+    <tr><td>Neo4j AuraDB Free</td><td>網頁開一個，拿連線字串</td>
+        <td>不用維護、不吃本機資源；<b>資料放在別人的雲上</b>，離線就不能用</td></tr>
+    <tr><td>不裝，用 Postgres 的 edges 表</td><td>不用起</td>
+        <td>沒有 Cypher，但也沒有東西要維護（＝第 1 題選 C 的話這題自動消失）</td></tr>
+  </table>`,
+  q:"Neo4j 怎麼跑",
+  options:[
+    {v:"docker", star:true, t:"Docker Compose 跑在本機",
+     d:"跟 Postgres 一起寫進同一個 compose 檔，一個指令全起來。資料在自己機器上。",
+     cost:"代價：Docker Desktop 要開著，吃記憶體"},
+    {v:"aura", t:"Neo4j AuraDB 免費方案（雲端）",
+     d:"完全不用維護。",
+     cost:"代價：資料在別人那裡；沒網路就整個系統停擺"},
+    {v:"skip", t:"暫時不裝（第 1 題選 C 的話選這個）",
+     d:"圖先住在 Postgres 的 edges 表裡。", cost:"代價：沒有 Cypher 查詢"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"service-run", n:4, hot:true, req:true,
+  title:"這個服務怎麼一直跑著",
+  plain:`你選了「自己接 Jira API」＋「服務 call Claude Code」＋「資料庫」。
+         這三個加起來代表：<b>一定要有一個常駐的服務</b>，SpecGate 不能再是雙擊開的 HTML 了。`,
+  body:`
+  <div class="callout a"><b>一個容易踩到的坑：如果服務本身跑在 Docker 容器裡，它叫不到你本機的 <code>claude</code> 指令。</b>
+  容器內沒有你的 Claude Code、沒有你的登入狀態、也看不到你的專案資料夾。
+  所以正確的切法是：<b>資料庫進容器，服務跑在本機。</b></div>
+  <div class="cmp">
+    <div class="box neu"><div class="cap">A · 手動起</div><pre>每次要用之前：
+  docker compose up -d      （DB）
+  uvicorn app:main --reload （服務）
+
+<span class="c">最單純、看得到 log
+但你會忘記開，然後以為壞了</span></pre></div>
+    <div class="box alt"><div class="cap">B · launchd 開機自動起</div><pre>~/Library/LaunchAgents/
+  com.sam.specgate.plist
+
+開機就在背景跑，log 落到檔案
+DB 仍然用 Docker（compose 設 restart: always）
+
+<span class="g">你不用記得任何事</span>
+<span class="c">壞掉時要去翻 log 檔才知道</span></pre></div>
+  </div>
+  <div class="cmp one">
+    <div class="box now"><div class="cap">C · 全部塞進 Docker Compose（含服務本身）</div><pre>docker compose up -d   → DB + 服務一起起來
+
+<span class="r">但服務在容器裡，執行 claude -p 會找不到指令。
+要救的話得多做一層：容器把工作丟出來，
+本機再跑一個 agent 去撿 —— 為了整齊多蓋一座橋。</span></pre></div>
+  </div>`,
+  q:"服務的啟動方式",
+  options:[
+    {v:"manual", t:"手動起（DB 用 Docker，服務用 uvicorn）",
+     d:"最單純，開發期間也最好 debug。",
+     cost:"代價：忘記開的時候會以為系統壞了"},
+    {v:"launchd", star:true, t:"launchd 開機自動起服務，DB 用 Docker",
+     d:"服務跑在本機所以叫得到 claude；DB 在容器裡不污染系統。開機後什麼都不用管。",
+     cost:"代價：第一次設定要寫個 plist；壞掉要去翻 log 檔"},
+    {v:"all-docker", t:"全部進 Docker Compose，包含服務本身",
+     d:"環境最乾淨、之後要搬到別台機器最容易。",
+     cost:"代價：容器裡叫不到本機的 claude —— 要多蓋一層橋接才能用第 2 題的功能"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+},
+{
+  id:"none-of-above", n:5, hot:true, req:true,
+  title:"上一輪露出來的一個矛盾",
+  plain:`你在 TECH-001 第 6 題選了<b>「不能跳過，每題都得正面回答」</b>。
+         但你在同一份表單裡跳了四題 —— 而且<b>跳得完全有道理</b>。`,
+  body:`
+  <pre>你實際做的事：
+
+  report-render-split  → 空白 ＋ 備註「我的資料要存入資料庫不只是json」
+  answers-home         → 空白 ＋ 備註「要存入資料庫」
+  llm-runtime          → 空白 ＋ 備註「在我的服務 call 本地的 claude code」
+  build-deploy         → 空白 ＋ 備註「devloop呼叫本地的claude code和call github action」
+
+<span class="g">這四條備註是整輪最有價值的輸入 —— 你現在看到的架構是它們決定的，
+不是我列的那些選項決定的。</span></pre>
+  <div class="callout r">但在「不能跳過」的規則下，這四題會逼你隨便勾一個最接近的。
+  <b>那四句話就不會被寫出來，架構也就不會被修正。</b></div>
+  <div class="callout">所以缺的其實不是「允許跳過」，是 <b>「以上皆非 —— 我要的是這個」</b>：
+  一個必須填說明才算數的選項。<b>這一頁的每一題最後都有它</b>，你可以直接試。</div>`,
+  q:"題目要不要加「以上皆非」",
+  options:[
+    {v:"none-option", star:true, t:"每題都加「以上皆非」，選了就必須寫說明",
+     d:"仍然不能空白跳過（維持你原本的決定），但給得出口。說明是必填，所以不會變成偷懶按鈕。",
+     cost:"代價：我出題時要接受「選項可能全錯」這件事"},
+    {v:"keep-strict", t:"維持不能跳過，也不加以上皆非",
+     d:"賭我每次都能把選項出好。",
+     cost:"代價：選項沒涵蓋到時，你會被逼著勾一個不是你意思的答案 —— 而紀錄上看起來像你認真選的"},
+    {v:"none-plus-defer", t:"加「以上皆非」，另外也允許真的沒意見時跳過",
+     d:"兩個出口都給。",
+     cost:"代價：跳過那個出口可能會被用成習慣"},
+    {v:"none", none:true, t:"以上皆非 —— 我要的是別的", d:"寫在下面的備註裡。", cost:""}
+  ]
+}
+];
+
+/* ============================================================
+   渲染（跟 TECH-001 同一套，多了「以上皆非必填說明」的規則）
+   ============================================================ */
+const LSKEY = "specgate-tech-choices-2-v1";
+const answers = {};
+
+function isNone(d, v) {
+  const o = d.options.filter(x => x.v === v)[0];
+  return !!(o && o.none);
+}
+function isDone(d) {
+  const a = answers[d.id];
+  if (!a || !a.choice) return false;
+  if (isNone(d, a.choice)) return !!(a.note && a.note.trim());
+  return true;
+}
+
+function optHTML(d, o) {
+  return '<label class="opt' + (o.none ? ' none' : '') + '" data-q="' + d.id + '" data-v="' + o.v + '">'
+    + '<input type="radio" name="q_' + d.id + '" value="' + o.v + '">'
+    + '<span class="opt-b">'
+    +   '<span class="opt-t">' + (o.star ? '<span class="star">★ </span>' : '') + o.t + '</span>'
+    +   '<span class="opt-d">' + o.d + '</span>'
+    +   (o.cost ? '<span class="opt-cost">' + o.cost + '</span>' : '')
+    + '</span></label>';
+}
+
+function render() {
+  let h = "";
+  DECISIONS.forEach(d => {
+    h += '<section class="' + (d.hot ? 'hot' : '') + '" id="s-' + d.id + '">'
+      +  '<h2><span class="n">' + String(d.n).padStart(2, '0') + '</span>' + d.title + '</h2>'
+      +  '<div class="plain">' + d.plain + '</div>'
+      +  d.body
+      +  '<div class="q" data-qid="' + d.id + '">'
+      +    '<div class="q-head"><span class="q-id">' + d.id + '</span>'
+      +      '<span class="q-title">' + d.q + '</span></div>'
+      +    '<div class="opts">' + d.options.map(o => optHTML(d, o)).join('') + '</div>'
+      +    '<div class="note-wrap" data-nw="' + d.id + '"><span data-nl="' + d.id + '">備註（可留空）</span>'
+      +      '<input class="note" data-note="' + d.id + '" placeholder="有條件、有疑問就寫這裡"></div>'
+      +  '</div></section>';
+  });
+  h += '<section><h2><span class="n">06</span>其他想法</h2>'
+    +  '<div class="plain">還有什麼我沒問到、或你想先看到的東西。</div>'
+    +  '<div class="q" data-qid="free"><div class="q-head"><span class="q-id">free</span>'
+    +  '<span class="q-title">補充</span></div>'
+    +  '<textarea id="freetext" rows="4" placeholder="例：先讓我看到「開一張卡 → 產報告 → 我答完 → 卡自動移到進行中」這一段能動。"></textarea>'
+    +  '</div></section>';
+  document.getElementById('body').innerHTML = h;
+}
+
+function paint() {
+  DECISIONS.forEach(d => {
+    const a = answers[d.id] || {};
+    const box = document.querySelector('.q[data-qid="' + d.id + '"]');
+    box.classList.toggle('answered', isDone(d));
+    box.querySelectorAll('label.opt').forEach(l => {
+      l.classList.toggle('sel', l.dataset.v === a.choice);
+    });
+    // 選了「以上皆非」→ 備註變必填
+    const must = !!(a.choice && isNone(d, a.choice));
+    const nw = document.querySelector('[data-nw="' + d.id + '"]');
+    nw.classList.toggle('must', must);
+    document.querySelector('[data-nl="' + d.id + '"]').textContent =
+      must ? '必填 —— 你要的是什麼？' : '備註（可留空）';
+    document.querySelector('input[data-note="' + d.id + '"]').placeholder =
+      must ? '寫下你真正要的做法，我照這個做' : '有條件、有疑問就寫這裡';
+  });
+  const done = DECISIONS.filter(isDone).length;
+  document.getElementById('done').textContent = done;
+  document.getElementById('total').textContent = DECISIONS.length;
+}
+
+function saveDraft() {
+  localStorage.setItem(LSKEY, JSON.stringify({
+    v: DOC_VERSION, answers, free: document.getElementById('freetext').value,
+    at: new Date().toISOString()
+  }));
+  document.getElementById('draft').textContent =
+    '· 草稿已存 ' + new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+}
+
+function loadDraft() {
+  const s = localStorage.getItem(LSKEY); if (!s) return;
+  try {
+    const d = JSON.parse(s); if (d.v !== DOC_VERSION) return;
+    Object.assign(answers, d.answers || {});
+    Object.keys(answers).forEach(id => {
+      const a = answers[id];
+      if (a.choice) {
+        const el = document.querySelector('input[name="q_' + id + '"][value="' + a.choice + '"]');
+        if (el) el.checked = true;
+      }
+      if (a.note) {
+        const n = document.querySelector('input[data-note="' + id + '"]');
+        if (n) n.value = a.note;
+      }
+    });
+    if (d.free) document.getElementById('freetext').value = d.free;
+  } catch (e) { /* 草稿壞掉就忽略 */ }
+}
+
+function buildPayload() {
+  return {
+    schema_version: 1,
+    doc: "specgate-tech-choices-2",
+    title: "SpecGate 技術選型閘門 TECH-002",
+    doc_version: DOC_VERSION,
+    follows: "specgate-tech-choices",
+    reviewed_at: new Date().toISOString(),
+    reviewer: "sam",
+    answers: DECISIONS.map(d => {
+      const a = answers[d.id] || {};
+      const o = d.options.filter(x => x.v === a.choice)[0];
+      return {
+        id: d.id,
+        question: d.q,
+        choice: a.choice || null,
+        choice_label: o ? o.t : null,
+        none_of_above: !!(a.choice && isNone(d, a.choice)),
+        answered: isDone(d),
+        note: a.note || ""
+      };
+    }),
+    free_text: document.getElementById('freetext').value
+  };
+}
+
+render();
+
+document.addEventListener('change', e => {
+  const r = e.target.closest('input[type=radio]');
+  if (!r) return;
+  const id = r.closest('.q').dataset.qid;
+  answers[id] = answers[id] || {};
+  answers[id].choice = r.value;
+  paint(); saveDraft();
+});
+
+document.addEventListener('input', e => {
+  const n = e.target.closest('input.note');
+  if (n) {
+    const id = n.dataset.note;
+    answers[id] = answers[id] || {};
+    answers[id].note = n.value;
+    paint(); saveDraft(); return;
+  }
+  if (e.target.id === 'freetext') saveDraft();
+});
+
+document.getElementById('save').onclick = () => {
+  const json = JSON.stringify(buildPayload(), null, 2);
+
+  let copied = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(json); copied = true; }
+  } catch (err) { copied = false; }
+  if (!copied) {
+    const ta = document.createElement('textarea');
+    ta.value = json; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { copied = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+  }
+
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tech-choices-2-review.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+
+  const miss = DECISIONS.filter(d => !isDone(d));
+  const needNote = miss.filter(d => answers[d.id] && answers[d.id].choice && isNone(d, answers[d.id].choice));
+  const m = document.getElementById('saved');
+  m.innerHTML = '✅ 已存成 <code>~/Downloads/tech-choices-2-review.json</code>'
+    + (copied ? '，同時複製到剪貼簿' : '')
+    + (needNote.length ? '<br>⚠️ 第 ' + needNote.map(d => d.n).join('、') + ' 題選了「以上皆非」但還沒寫說明 —— 那題等於沒答。' : '')
+    + (miss.length && !needNote.length ? '<br>⚠️ 第 ' + miss.map(d => d.n).join('、') + ' 題還沒選。' : '')
+    + '<br>跟我說一句「<b>第二輪選好了</b>」，我讀檔就寫實作報告。';
+  m.classList.add('show');
+};
+
+loadDraft(); paint();
+</script>
+</body>
+</html>

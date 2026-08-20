@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpecGate PRD — 動工前的規格閘門</title>
+<style>
+  :root {
+    --bg: #f7f8fa; --card: #ffffff; --ink: #1a2333; --muted: #5b6577;
+    --line: #e3e7ee; --blue: #2563eb; --blue-soft: #eaf1fe;
+    --green: #16a34a; --green-soft: #e7f6ec; --red: #dc2626; --red-soft: #fdecec;
+    --amber: #d97706; --amber-soft: #fdf1e7; --purple: #8b5cf6; --purple-soft: #f3eeff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+    line-height: 1.85; padding: 44px 20px 90px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  .tag { display:inline-block; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase;
+         color: var(--blue); background: var(--blue-soft); padding:3px 11px; border-radius:999px; font-weight:700; }
+  h1 { font-size: 1.9rem; letter-spacing: -.02em; margin: 12px 0 6px; }
+  .sub { color: var(--muted); margin-bottom: 8px; font-size: 1.02rem; }
+  .meta { color: var(--muted); font-size: .84rem; font-family: var(--mono); margin-bottom: 30px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+            padding: 28px 32px; margin-bottom: 26px; }
+  section > h2 { font-size: 1.2rem; margin-bottom: 6px; display:flex; align-items:baseline; gap:10px; }
+  section > h2 .n { font-family: var(--mono); font-size:.8rem; color:#fff; background: var(--ink);
+                    border-radius:6px; padding:2px 8px; }
+  section > .lede { color: var(--muted); font-size:.95rem; margin-bottom: 18px; }
+  h3 { font-size: 1rem; margin: 22px 0 8px; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px 22px; }
+  li { margin: 5px 0; }
+  code { font-family: var(--mono); font-size: .86em; background:#f0f3f8; padding:1px 6px; border-radius:4px; }
+  pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:14px 16px;
+        overflow-x:auto; font-family: var(--mono); font-size:.8rem; line-height:1.65; margin:12px 0; }
+  table { width:100%; border-collapse: collapse; font-size:.9rem; margin:12px 0; }
+  th, td { border:1px solid var(--line); padding:9px 12px; text-align:left; vertical-align:top; }
+  th { background:#f3f5f9; font-size:.85rem; }
+  .pill { font-size:.72rem; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; }
+  .p0 { background: var(--red-soft); color: var(--red); }
+  .p1 { background: var(--amber-soft); color: var(--amber); }
+  .p2 { background:#eef1f6; color: var(--muted); }
+  .callout { border-left:4px solid var(--blue); background: var(--blue-soft); border-radius:9px;
+             padding:14px 18px; margin:16px 0; font-size:.95rem; }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-soft); }
+  .callout.no { border-left-color: var(--red); background: var(--red-soft); }
+  .callout b { color: inherit; }
+  .flow { overflow-x:auto; }
+  svg.flow-svg { display:block; margin: 8px auto; min-width: 700px; }
+  .fl-box { fill:#fff; stroke: var(--line); stroke-width:1.5; }
+  .fl-box.claude { stroke: var(--purple); }
+  .fl-box.sam { stroke: var(--blue); stroke-width:2.4; }
+  .fl-box.gate { stroke: var(--amber); stroke-width:2.4; fill: #fffdf8; }
+  .fl-t { font-size:12px; fill: var(--ink); font-weight:600; }
+  .fl-s { font-size:10px; fill: var(--muted); }
+  .fl-a { stroke: #9aa7ba; stroke-width:1.6; fill:none; }
+  .stages { display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-top:8px; }
+  .stage { border:1px solid var(--line); border-radius:11px; padding:16px 18px; background:#fcfdff; }
+  .stage h4 { font-size:.95rem; margin-bottom:2px; }
+  .stage .when { font-size:.78rem; color:var(--muted); font-family:var(--mono); margin-bottom:10px; }
+  .stage.now { border-top:3px solid var(--green); }
+  .stage.next { border-top:3px solid var(--blue); }
+  .stage.later { border-top:3px solid #c9d2de; }
+  .stage p { font-size:.87rem; color:var(--muted); margin:6px 0; line-height:1.65; }
+  .foot { text-align:center; color:var(--muted); font-size:.82rem; margin-top:28px; }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="tag">PRD · v0.1 · 草案</span>
+  <h1>SpecGate —— 動工前的規格閘門</h1>
+  <p class="sub">一張 Jira 卡 = 一頁規格閘門。動工前先過閘，決策留痕，答案可被程式讀取。</p>
+  <p class="meta">2026-08-18 · Sam · 待驗證（配合 prototype/KAN-15.html 一起看）</p>
+
+  <!-- 1 -->
+  <section>
+    <h2><span class="n">1</span>要解決什麼問題</h2>
+    <p>
+      現在的開發流程是：Claude 在聊天視窗給一份實作報告 → Sam 讀 → 口頭回「approve」或「改這個」→ 開始寫。
+      這個流程有三個洞：
+    </p>
+    <table>
+      <tr><th style="width:24%">洞</th><th>具體長怎樣</th></tr>
+      <tr>
+        <td><b>決策會被沖走</b></td>
+        <td>「為什麼第一個來源不是 104」這種判斷只存在於聊天記錄裡。三週後回頭看程式碼，只看得到結果，看不到當時排除了什麼、為什麼排除。面試被問「你怎麼做技術選型」時，答案得靠回憶。</td>
+      </tr>
+      <tr>
+        <td><b>回答是自然語言，程式讀不到</b></td>
+        <td>「用 A3 但門檻降到 50 筆」這句話沒有結構。無法統計「這個專案做過幾次選型決策」，也沒辦法在卡關閉時自動比對「當初的驗收條件真的都滿足了嗎」。</td>
+      </tr>
+      <tr>
+        <td><b>單人流程無法擴到團隊</b></td>
+        <td>團隊裡「動工前先對規格」這件事通常靠開會或 RFC 文件，成本高到大家會跳過。跳過的結果是 code review 才發現方向錯，重寫成本最高。</td>
+      </tr>
+    </table>
+    <div class="callout">
+      <b>核心洞察</b>：code review 是在「已經寫完」之後才發生的。真正該被 review 的是<b>動工前的那個決定</b> ——
+      但業界沒有輕量的工具做這件事，所以大家用開會代替。SpecGate 把這一層變成一個頁面、五分鐘、留下結構化紀錄。
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <h2><span class="n">2</span>使用者與情境</h2>
+    <table>
+      <tr><th style="width:20%">角色</th><th style="width:22%">現在（Phase 1）</th><th>未來（Phase 3 團隊版）</th></tr>
+      <tr>
+        <td><b>提案者</b></td>
+        <td>Claude —— 產出實作報告頁</td>
+        <td>任何工程師，或 AI agent</td>
+      </tr>
+      <tr>
+        <td><b>審核者</b></td>
+        <td>Sam —— 讀、答題、按閘門</td>
+        <td>Tech lead / 同儕 / PM（依決策類型分流）</td>
+      </tr>
+      <tr>
+        <td><b>執行者</b></td>
+        <td>Claude —— 讀答案後動工</td>
+        <td>工程師或 agent，拿著已批准的規格開工</td>
+      </tr>
+    </table>
+    <p>
+      關鍵情境：<b>Sam 在通勤或睡前用手機讀報告、點選項、按儲存</b>。隔天坐到電腦前跟 Claude 說一句「答完了」，
+      Claude 讀檔就直接開工。審核跟執行在時間上解耦。
+    </p>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <h2><span class="n">3</span>核心概念</h2>
+    <p class="lede">一張 Jira 卡對應一頁。頁面同時是三個東西。</p>
+    <div class="stages">
+      <div class="stage now">
+        <h4>① 提案文件</h4>
+        <div class="when">動工前</div>
+        <p>八節結構的實作報告：目標、現況、關鍵決策點、檔案清單、介面草稿、測試策略、驗收對照、風險與債。</p>
+      </div>
+      <div class="stage next">
+        <h4>② 決策表單</h4>
+        <div class="when">審核時</div>
+        <p>報告內文中穿插題目（單選 / 是非 / 問答），問題緊貼在相關段落旁邊 —— 不是集中在最後的問卷。</p>
+      </div>
+      <div class="stage later">
+        <h4>③ 決策紀錄</h4>
+        <div class="when">動工後永久</div>
+        <p>答完存成結構化 JSON，跟卡號綁定。這份紀錄之後可以匯總成 ADR、面試素材、團隊決策資料庫。</p>
+      </div>
+    </div>
+    <div class="callout warn">
+      <b>刻意的限制</b>：一張卡一頁，不做多卡合併頁。閘門的價值來自「單一決定、單次審核、明確結果」——
+      一旦一頁塞多張卡，審核就會退化成瀏覽，跟現在讀聊天記錄沒兩樣。
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <h2><span class="n">4</span>流程</h2>
+    <div class="flow">
+      <svg class="flow-svg" viewBox="0 0 880 300" width="880" height="300" role="img"
+           aria-label="SpecGate 流程：Claude 產生報告頁、Sam 審核作答、儲存為 JSON、Claude 讀檔動工、完成後回填 Jira">
+        <!-- row 1 -->
+        <rect class="fl-box claude" x="14" y="26" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="89" y="50" text-anchor="middle">① Claude 產出</text>
+        <text class="fl-s" x="89" y="68" text-anchor="middle">讀 Jira 卡 + 程式碼現況</text>
+
+        <rect class="fl-box" x="204" y="26" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="279" y="50" text-anchor="middle">② 生成頁面</text>
+        <text class="fl-s" x="279" y="68" text-anchor="middle">KAN-15.html</text>
+
+        <rect class="fl-box sam" x="394" y="26" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="469" y="50" text-anchor="middle">③ Sam 審核</text>
+        <text class="fl-s" x="469" y="68" text-anchor="middle">讀報告・答題</text>
+
+        <rect class="fl-box gate" x="584" y="20" width="150" height="70" rx="9"/>
+        <text class="fl-t" x="659" y="46" text-anchor="middle">④ 閘門</text>
+        <text class="fl-s" x="659" y="64" text-anchor="middle">approve / 要求修改</text>
+        <text class="fl-s" x="659" y="79" text-anchor="middle">→ 存成 JSON</text>
+
+        <path class="fl-a" d="M164,55 L204,55" marker-end="url(#a1)"/>
+        <path class="fl-a" d="M354,55 L394,55" marker-end="url(#a1)"/>
+        <path class="fl-a" d="M544,55 L584,55" marker-end="url(#a1)"/>
+
+        <!-- 要求修改 回流 -->
+        <path class="fl-a" d="M659,90 L659,120 L89,120 L89,84" stroke-dasharray="5 5" marker-end="url(#a1)"/>
+        <text class="fl-s" x="360" y="114" text-anchor="middle">要求修改 → 只改那一節，重發</text>
+
+        <!-- row 2 -->
+        <rect class="fl-box claude" x="14" y="176" width="180" height="58" rx="9"/>
+        <text class="fl-t" x="104" y="200" text-anchor="middle">⑤ Claude 讀答案</text>
+        <text class="fl-s" x="104" y="218" text-anchor="middle">~/Downloads/KAN-15-review.json</text>
+
+        <rect class="fl-box" x="234" y="176" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="309" y="200" text-anchor="middle">⑥ 照決定動工</text>
+        <text class="fl-s" x="309" y="218" text-anchor="middle">寫程式・跑測試</text>
+
+        <rect class="fl-box" x="424" y="176" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="499" y="200" text-anchor="middle">⑦ 回填</text>
+        <text class="fl-s" x="499" y="218" text-anchor="middle">頁面標記已完成</text>
+
+        <rect class="fl-box" x="614" y="176" width="150" height="58" rx="9"/>
+        <text class="fl-t" x="689" y="200" text-anchor="middle">⑧ 決策庫</text>
+        <text class="fl-s" x="689" y="218" text-anchor="middle">累積成 ADR / 面試素材</text>
+
+        <path class="fl-a" d="M659,90 C700,140 300,130 104,176" marker-end="url(#a1)"/>
+        <text class="fl-s" x="230" y="158" text-anchor="middle">approve</text>
+        <path class="fl-a" d="M194,205 L234,205" marker-end="url(#a1)"/>
+        <path class="fl-a" d="M384,205 L424,205" marker-end="url(#a1)"/>
+        <path class="fl-a" d="M574,205 L614,205" marker-end="url(#a1)"/>
+
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9aa7ba"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+    <p>
+      ③④ 是 Sam 的部分，設計目標是 <b>五分鐘內完成</b>。超過五分鐘代表報告寫太長，是 Claude 的問題不是流程的問題。
+    </p>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <h2><span class="n">5</span>功能需求</h2>
+    <table>
+      <tr><th style="width:8%">優先</th><th style="width:26%">功能</th><th>說明與驗收</th></tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>八節報告結構</td>
+        <td>固定順序、固定標題。第 3 節「關鍵決策點」永遠在最上方顯眼處 —— 那是唯一需要 Sam 動腦的部分。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>三種題型</td>
+        <td><b>單選</b>（選項含代價/風險，建議項標星）、<b>是非</b>、<b>問答</b>（多行文字）。每題可附備註。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>題目穿插在內文</td>
+        <td>問題出現在相關段落正下方，不是集中在頁尾。讀到哪答到哪。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>閘門判定</td>
+        <td>底部兩顆按鈕：<b>approve 動工</b> / <b>要求修改</b>。後者必須填理由才能存。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>儲存 → 結構化 JSON</td>
+        <td>下載到 <code>~/Downloads/{CARD}-review.json</code>，Claude 直接讀。檔名帶卡號，不會混。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p0">P0</span></td>
+        <td>草稿自動保存</td>
+        <td>每次改動寫進 localStorage。中途關頁面、換裝置以外的情況都不會掉答案。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p1">P1</span></td>
+        <td>進度指示</td>
+        <td>「已答 3 / 5」。未答完時 approve 按鈕停用 —— 強迫每個決策點都被正面回答，不能默認。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p1">P1</span></td>
+        <td>索引頁</td>
+        <td><code>index.html</code> 列出所有卡的閘門狀態：待審 / 已批准 / 要求修改 / 已完工。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p1">P1</span></td>
+        <td>Jira 連動</td>
+        <td>頁面上有卡片連結與即時狀態。approve 時順手把卡移到「進行中」（走 Rovo MCP）。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p2">P2</span></td>
+        <td>決策匯總</td>
+        <td>把所有 JSON 匯成一頁「這個專案做過的技術決策」—— 直接是面試素材與 ADR 來源。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p2">P2</span></td>
+        <td>完工回填</td>
+        <td>動工完成後，頁面顯示「實際做出來的 vs 當初報告的」差異，把偏離記下來。</td>
+      </tr>
+      <tr>
+        <td><span class="pill p2">P2</span></td>
+        <td>多人審核</td>
+        <td>同一頁多個 reviewer、留言串、分流規則（架構決策找 tech lead、範圍決策找 PM）。</td>
+      </tr>
+    </table>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <h2><span class="n">6</span>資料模型</h2>
+    <p class="lede">一次審核產出一個 JSON。這個形狀是整個系統的合約 —— 頁面怎麼改，這個形狀盡量不動。</p>
+<pre>{
+  "schema_version": 1,
+  "card": "KAN-15",
+  "title": "[Phase 0 / W1] 104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地",
+  "report_version": "2026-08-18T16:40:00+08:00",   // 對應哪一版報告
+  "reviewed_at": "2026-08-18T22:15:03+08:00",
+  "reviewer": "sam",
+  "verdict": "approved",                            // approved | changes_requested
+  "verdict_note": "",
+  "answers": [
+    { "id": "A", "type": "single",  "question": "第一個來源接誰",
+      "choice": "A3", "choice_label": "先接有正式 API 的來源（Remotive）", "note": "104 之後再說" },
+    { "id": "B", "type": "boolean", "question": "加 tenacity？", "value": true,  "note": "" },
+    { "id": "C", "type": "single",  "question": "≥200 筆門檻", "choice": "keep", "note": "" },
+    { "id": "D", "type": "text",    "question": "其他條件或反對理由",
+      "text": "adapter 介面要能同時容納中英文 JD" }
+  ]
+}</pre>
+    <div class="callout">
+      <b>為什麼要 <code>report_version</code></b>：報告會改版（要求修改後重發）。答案必須綁定「回答的是哪一版」，
+      否則之後對照時會出現「他批准的東西跟最後做的不一樣」卻查不出斷點。
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <h2><span class="n">7</span>技術架構 —— 三階段，別一次做到位</h2>
+    <div class="stages">
+      <div class="stage now">
+        <h4>Phase 1 · 純靜態檔</h4>
+        <div class="when">現在 · 零基礎建設</div>
+        <p><b>做法</b>：Claude 產生獨立 HTML，雙擊用瀏覽器開。儲存＝觸發下載 JSON 到 <code>~/Downloads</code>，外加 localStorage 草稿。</p>
+        <p><b>代價</b>：每次存檔多一次下載動作；索引頁要手動維護；答案檔散在下載資料夾。</p>
+        <p><b>為什麼先做這個</b>：驗證「這個流程本身有沒有用」不需要任何伺服器。如果流程沒用，省下所有基礎建設。</p>
+      </div>
+      <div class="stage next">
+        <h4>Phase 2 · 本機小服務</h4>
+        <div class="when">流程證明有用之後</div>
+        <p><b>做法</b>：一支 FastAPI（複用 JobRadar 的 stack），<code>GET /cards</code> 列表、<code>GET /cards/{key}</code> 出頁面、<code>POST /cards/{key}/review</code> 存檔。答案落 SQLite 或直接寫 JSON 檔進專案資料夾。</p>
+        <p><b>換來</b>：一鍵儲存、自動索引頁、Jira 狀態即時同步、決策匯總頁。</p>
+        <p><b>代價</b>：要記得把服務跑起來（可用 launchd 開機自動啟動）。</p>
+      </div>
+      <div class="stage later">
+        <h4>Phase 3 · 團隊版</h4>
+        <div class="when">有第二個人用的時候</div>
+        <p><b>做法</b>：部署上去、加登入、多 reviewer、留言串、Jira webhook 雙向同步。</p>
+        <p><b>前置條件</b>：Phase 1–2 至少累積 20 張卡的實際使用，證明流程在單人狀態下不會被跳過。</p>
+        <p><b>風險</b>：團隊版最大的敵人不是技術，是「大家覺得多一道手續」。所以五分鐘完成是硬指標。</p>
+      </div>
+    </div>
+    <div class="callout warn">
+      <b>技術選型註記</b>：Phase 2 刻意用 FastAPI 而非現成工具（Notion / Confluence / Google Forms）——
+      因為答案要被 Claude 直接讀取並轉成行動。現成工具的匯出格式都要多一層轉換，而那層轉換就是流程斷掉的地方。
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section>
+    <h2><span class="n">8</span>非目標</h2>
+    <ul>
+      <li><b>不取代 Jira</b> —— 卡的建立、狀態、排序都留在 Jira。SpecGate 只負責「動工前那一刻」。</li>
+      <li><b>不是文件庫</b> —— 不放架構文件、不放會議紀錄。一頁只服務一張卡的一次決定。</li>
+      <li><b>不做即時協作</b> —— 不是 Google Docs。審核是非同步的、一次性的。</li>
+      <li><b>不自動產生報告內容</b> —— 報告是 Claude 寫的，SpecGate 只提供承載與收集的容器。工具不負責想。</li>
+      <li><b>不做通知系統</b> —— Phase 1–2 靠 Sam 自己開頁面。加通知是團隊版才有意義的功能。</li>
+    </ul>
+  </section>
+
+  <!-- 9 -->
+  <section>
+    <h2><span class="n">9</span>成功指標</h2>
+    <table>
+      <tr><th style="width:30%">指標</th><th style="width:20%">目標</th><th>為什麼是這個</th></tr>
+      <tr><td>審核耗時</td><td>≤ 5 分鐘 / 張</td><td>超過就會開始跳過。這是流程存亡的門檻，不是效率優化。</td></tr>
+      <tr><td>閘門覆蓋率</td><td>Phase 0 剩餘卡 100%</td><td>選擇性使用等於沒有流程。</td></tr>
+      <tr><td>「要求修改」比例</td><td>20–40%</td><td>太低代表 Sam 沒在認真審（橡皮圖章）；太高代表 Claude 的報告品質不穩。<b>這個指標同時在監督兩邊。</b></td></tr>
+      <tr><td>動工後方向翻盤次數</td><td>→ 0</td><td>閘門的最終價值：寫到一半才發現方向錯的次數應該歸零。</td></tr>
+    </table>
+  </section>
+
+  <!-- 10 -->
+  <section>
+    <h2><span class="n">10</span>待確認（prototype 要驗證的）</h2>
+    <ol>
+      <li><b>題目穿插 vs 集中頁尾</b> —— 穿插理論上更好，但可能打斷閱讀節奏。prototype 用穿插，實際點過再判斷。</li>
+      <li><b>八節會不會太長</b> —— 手機上讀八節報告可能太重。要不要預設摺疊只展開「決策點」那節？</li>
+      <li><b>未答完就鎖住 approve，會不會太煩</b> —— 有些題目 Sam 可能真的沒意見想跳過。要不要允許「交給你決定」這個選項？</li>
+      <li><b>下載到 <code>~/Downloads</code> 夠不夠用</b> —— 或是該直接跳 Phase 2 做本機服務。這題答案取決於前三題實際用起來的摩擦。</li>
+    </ol>
+    <div class="callout no">
+      <b>先別做的事</b>：索引頁、Jira 連動、決策匯總都是 P1/P2。在確認「這個流程 Sam 真的會用」之前做這些，
+      是把時間投在還沒被驗證的假設上 —— 也正是 JobRadar 雙視角手冊裡那條 PM 自我警告：「加功能逃避核心問題」。
+    </div>
+  </section>
+
+  <p class="foot">
+    SpecGate PRD v0.1 · 配合 <code>prototype/KAN-15.html</code> 驗證 ·
+    2026-08-18
+  </p>
+</div>
+</body>
+</html>

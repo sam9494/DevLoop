@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "doc": "specgate-tech-choices",
+  "title": "SpecGate 技術選型閘門 TECH-001",
+  "doc_version": "2026-08-19T00:00:00+08:00",
+  "reviewed_at": "2026-08-19T08:54:37.815Z",
+  "reviewer": "sam",
+  "answers": [
+    {
+      "id": "scope",
+      "question": "這次動工要做的是哪一個",
+      "choice": "devloop",
+      "choice_label": "直接做 DevLoop 全閉環",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "report-render-split",
+      "question": "報告內容要不要跟樣板拆開",
+      "choice": null,
+      "choice_label": null,
+      "deferred": true,
+      "note": "我的資料要存入資料庫不只是json"
+    },
+    {
+      "id": "mobile",
+      "question": "手機這條路怎麼走",
+      "choice": "mac-only",
+      "choice_label": "先只在 Mac 上用，手機情境延到 Phase 2",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "answers-home",
+      "question": "答案檔的永久位置",
+      "choice": null,
+      "choice_label": null,
+      "deferred": true,
+      "note": "要存入資料庫"
+    },
+    {
+      "id": "question-id",
+      "question": "題目 id 要用哪種",
+      "choice": "slug",
+      "choice_label": "改成語義 slug，例如 source-choice、tenacity-dep",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "defer",
+      "question": "要不要允許跳過",
+      "choice": "no-skip",
+      "choice_label": "不能跳過，每題都得正面回答（現在這樣）",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "jira",
+      "question": "Jira 整合走哪條",
+      "choice": "own-client",
+      "choice_label": "SpecGate 自己接 Jira API",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "llm-runtime",
+      "question": "LLM 的呼叫端",
+      "choice": null,
+      "choice_label": null,
+      "deferred": true,
+      "note": "在我的服務 call本地的claude code"
+    },
+    {
+      "id": "kg-store",
+      "question": "知識圖譜怎麼存",
+      "choice": "graphdb",
+      "choice_label": "圖資料庫（Neo4j 之類）",
+      "deferred": false,
+      "note": ""
+    },
+    {
+      "id": "build-deploy",
+      "question": "④⑤ 兩步的做法",
+      "choice": null,
+      "choice_label": null,
+      "deferred": true,
+      "note": "devloop呼叫本地的claude code和call github action"
+    }
+  ],
+  "free_text": ""
+}

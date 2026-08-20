@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAN-15 規格閘門 — 104 adapter</title>
+<style>
+  :root {
+    --bg:#f7f8fa; --card:#fff; --ink:#1a2333; --muted:#5b6577; --line:#e3e7ee;
+    --blue:#2563eb; --blue-soft:#eaf1fe; --green:#16a34a; --green-soft:#e7f6ec;
+    --red:#dc2626; --red-soft:#fdecec; --amber:#d97706; --amber-soft:#fdf1e7;
+    --purple:#8b5cf6; --purple-soft:#f3eeff;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--ink); line-height:1.85;
+    font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+    padding:30px 18px 190px;
+  }
+  .wrap { max-width:960px; margin:0 auto; }
+
+  /* ===== 卡片抬頭 ===== */
+  header.card-head {
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:22px 26px; margin-bottom:22px; border-left:5px solid var(--amber);
+  }
+  .kline { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .key { font-family:var(--mono); font-weight:800; font-size:1.02rem; color:var(--blue); text-decoration:none; }
+  .key:hover { text-decoration:underline; }
+  .chip { font-size:.72rem; font-weight:700; padding:2px 10px; border-radius:999px; }
+  .chip.todo { background:#eef1f6; color:var(--muted); }
+  .chip.gate { background:var(--amber-soft); color:var(--amber); }
+  h1 { font-size:1.28rem; line-height:1.5; letter-spacing:-.01em; }
+  .labels { margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .lb { font-family:var(--mono); font-size:.7rem; background:#f0f3f8; color:var(--muted); padding:2px 8px; border-radius:5px; }
+
+  /* ===== 區塊 ===== */
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px;
+            padding:24px 28px; margin-bottom:20px; }
+  section > h2 { font-size:1.12rem; margin-bottom:6px; display:flex; align-items:baseline; gap:10px; }
+  section > h2 .n { font-family:var(--mono); font-size:.75rem; color:#fff; background:var(--ink);
+                    border-radius:6px; padding:2px 8px; }
+  section.hot { border:2px solid var(--amber); background:#fffdf9; }
+  section.hot > h2 .n { background:var(--amber); }
+  .lede { color:var(--muted); font-size:.93rem; margin-bottom:14px; }
+  p { margin:9px 0; }
+  ul,ol { margin:9px 0 9px 22px; } li { margin:4px 0; }
+  code { font-family:var(--mono); font-size:.86em; background:#f0f3f8; padding:1px 6px; border-radius:4px; }
+  pre { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:13px 15px;
+        overflow-x:auto; font-family:var(--mono); font-size:.78rem; line-height:1.6; margin:11px 0; }
+  table { width:100%; border-collapse:collapse; font-size:.88rem; margin:11px 0; }
+  th,td { border:1px solid var(--line); padding:8px 11px; text-align:left; vertical-align:top; }
+  th { background:#f3f5f9; font-size:.83rem; }
+  .ok { color:var(--green); font-weight:700; }
+  .no { color:var(--red); font-weight:700; }
+  .warn-i { color:var(--amber); font-weight:700; }
+  .callout { border-left:4px solid var(--blue); background:var(--blue-soft); border-radius:9px;
+             padding:12px 16px; margin:14px 0; font-size:.93rem; }
+  .callout.a { border-left-color:var(--amber); background:var(--amber-soft); }
+  .callout.r { border-left-color:var(--red); background:var(--red-soft); }
+
+  /* ===== 題目元件 ===== */
+  .q {
+    border:2px solid var(--blue); border-radius:12px; background:var(--blue-soft);
+    padding:16px 18px; margin:20px 0 6px;
+  }
+  .q.answered { border-color:var(--green); background:var(--green-soft); }
+  .q-head { display:flex; align-items:center; gap:9px; margin-bottom:4px; flex-wrap:wrap; }
+  .q-id { font-family:var(--mono); font-size:.7rem; font-weight:800; color:#fff;
+          background:var(--blue); border-radius:5px; padding:1px 8px; }
+  .q.answered .q-id { background:var(--green); }
+  .q-type { font-size:.7rem; color:var(--muted); font-family:var(--mono); }
+  .q-title { font-weight:700; font-size:1rem; }
+  .q-sub { font-size:.86rem; color:var(--muted); margin-bottom:10px; }
+  .opts { display:flex; flex-direction:column; gap:8px; }
+  label.opt {
+    display:flex; gap:11px; align-items:flex-start; background:#fff; border:1.5px solid var(--line);
+    border-radius:9px; padding:11px 13px; cursor:pointer; transition:all .16s;
+  }
+  label.opt:hover { border-color:var(--blue); }
+  label.opt.sel { border-color:var(--green); background:#f6fdf8; box-shadow:0 0 0 3px var(--green-soft); }
+  label.opt input { margin-top:5px; flex:0 0 auto; accent-color:var(--green); }
+  .opt-b { flex:1; }
+  .opt-t { font-weight:600; font-size:.93rem; }
+  .opt-t .star { color:var(--amber); font-weight:800; }
+  .opt-d { font-size:.83rem; color:var(--muted); line-height:1.6; margin-top:3px; }
+  .opt-cost { font-size:.8rem; color:var(--red); margin-top:3px; }
+  .yn { display:flex; gap:10px; }
+  .yn button {
+    font:inherit; font-size:.92rem; font-weight:700; flex:1; padding:11px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; transition:all .16s;
+  }
+  .yn button:hover { border-color:var(--blue); }
+  .yn button.on-y { border-color:var(--green); background:var(--green-soft); color:#14532d; }
+  .yn button.on-n { border-color:var(--red); background:var(--red-soft); color:var(--red); }
+  textarea, input.note {
+    width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line); border-radius:9px;
+    padding:10px 12px; background:#fff; resize:vertical; font-family:inherit;
+  }
+  textarea:focus, input.note:focus { outline:none; border-color:var(--blue); }
+  .note-wrap { margin-top:9px; }
+  .note-wrap span { font-size:.78rem; color:var(--muted); display:block; margin-bottom:3px; }
+
+  /* ===== 底部固定列 ===== */
+  .gate-bar {
+    position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.97);
+    border-top:1px solid var(--line); box-shadow:0 -4px 18px rgba(26,35,51,.09);
+    padding:13px 18px; backdrop-filter:blur(8px); z-index:50;
+  }
+  .gate-inner { max-width:960px; margin:0 auto; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .prog { font-size:.86rem; color:var(--muted); font-family:var(--mono); }
+  .prog b { color:var(--ink); }
+  .spacer { flex:1; }
+  .gate-bar button {
+    font:inherit; font-size:.92rem; font-weight:700; padding:10px 20px; border-radius:9px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; transition:all .16s;
+  }
+  .gate-bar button:hover:not(:disabled) { border-color:var(--blue); }
+  .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
+  #vApprove.on { background:var(--green); border-color:var(--green); color:#fff; }
+  #vChanges.on { background:var(--amber); border-color:var(--amber); color:#fff; }
+  #save { background:var(--blue); border-color:var(--blue); color:#fff; }
+  #save:disabled { background:#c7d2e2; border-color:#c7d2e2; color:#fff; }
+  .reason { width:100%; margin-top:10px; display:none; }
+  .reason.show { display:block; }
+  .saved-msg {
+    max-width:960px; margin:10px auto 0; font-size:.87rem; color:#14532d;
+    background:var(--green-soft); border:1px solid var(--green); border-radius:9px;
+    padding:10px 14px; display:none;
+  }
+  .saved-msg.show { display:block; }
+  .saved-msg code { background:#fff; }
+  .draft-hint { font-size:.76rem; color:var(--muted); }
+  .foot { text-align:center; color:var(--muted); font-size:.8rem; margin-top:24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="card-head">
+    <div class="kline">
+      <a class="key" href="https://swallowhouse.atlassian.net/browse/KAN-15" target="_blank" rel="noopener">KAN-15</a>
+      <span class="chip todo">待辦事項</span>
+      <span class="chip gate">⛩ 等待閘門</span>
+    </div>
+    <h1>[Phase 0 / W1] 104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地</h1>
+    <div class="labels"><span class="lb">ingestion</span><span class="lb">phase-0</span><span class="lb">week-1</span></div>
+  </header>
+
+  <!-- 1 -->
+  <section>
+    <h2><span class="n">1</span>目標</h2>
+    <p>
+      做完之後「<b>資料進得來</b>」成立：一條可重複執行的批次，把真實職缺抓進 <code>jobs</code>、
+      原始 JSON 落 JSONB、url 去重、每次執行在 <code>crawl_runs</code> 留紀錄。
+    </p>
+    <p>這是 Phase 0 Week 1 最後一塊，卡著 W2 的打標（KAN-16）與 embedding（KAN-17）。</p>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <h2><span class="n">2</span>現況</h2>
+    <table>
+      <tr><th style="width:36%">項目</th><th>狀態</th></tr>
+      <tr><td><code>src/jobradar/ingestion/</code></td><td>只有一個空的 <code>__init__.py</code></td></tr>
+      <tr><td>資料表</td><td><span class="ok">✅</span> 6 張表 + migration 到 <code>002</code>（已驗證）</td></tr>
+      <tr><td><code>httpx</code></td><td><span class="ok">✅</span> 已在 deps</td></tr>
+      <tr><td>HTML parser / 重試套件</td><td><span class="no">❌</span> 都沒有</td></tr>
+      <tr><td>import-linter 規則</td><td><code>ingestion</code> 與 <code>enrichment</code>/<code>matching</code> 必須互相獨立</td></tr>
+      <tr><td><code>jobs.source</code> 的 CHECK</td><td><span class="warn-i">⚠️</span> 只允許 <code>'104'</code>、<code>'cake'</code> —— 接第三個來源要先開 migration</td></tr>
+    </table>
+
+    <div class="callout r">
+      <b>今天的探測結果（這是整張卡翻盤的原因）</b><br>
+      104 的搜尋 API 回 Cloudflare 挑戰頁 —— WebFetch 403、headless 瀏覽器帶真實 UA 也 403：
+      <pre style="margin:8px 0 0">HTTP 403
+&lt;title&gt;Just a moment...&lt;/title&gt;
+script-src ... https://challenges.cloudflare.com</pre>
+      <p style="margin:8px 0 0">
+        依 <code>headless-scrape</code> 的規則，遇到挑戰頁就停止回報，未嘗試繞過。<br>
+        另測 Cake：<b>無防護、頁面回得來</b>，但職缺是前端渲染，需要打內部 API 或用瀏覽器渲染。
+      </p>
+    </div>
+  </section>
+
+  <!-- 3 決策點 -->
+  <section class="hot">
+    <h2><span class="n">3</span>關鍵決策點</h2>
+    <p class="lede">這一節是你唯一需要動腦的部分。其他節看過去就好。</p>
+
+    <h3 style="margin-top:6px">決策 A：Phase 0 的第一個來源接誰</h3>
+    <table>
+      <tr><th style="width:16%"></th><th style="width:34%">做法</th><th>代價與風險</th></tr>
+      <tr><td><b>A1</b> 硬上 104</td><td>需要真實瀏覽器 session 撐過 Cloudflare、可能要住宅 IP</td>
+          <td>每日無人值守排程幾乎必定間歇失敗；對方已明確表態不歡迎自動流量；面試講「我繞過了 Cloudflare」<b>是扣分不是加分</b></td></tr>
+      <tr><td><b>A2</b> Cake 先行</td><td>把 DEBT 那條「Cake adapter 延後」反過來</td>
+          <td>要再花時間確認 Cake 內部 API 形狀；台灣職缺量少於 104；未來它也可能加防護</td></tr>
+      <tr><td><b>A3</b> 先接正式 API 來源</td><td>Remotive / WWR / RemoteOK 提供公開 JSON API，無防護、條款允許</td>
+          <td>職缺是英文遠端市場，跟「台灣求職者」的產品定位有落差；<b>需多開 migration 003 放寬 <code>jobs.source</code></b></td></tr>
+      <tr><td><b>A4</b> 只用 fixture</td><td>真實抓取整條延後</td>
+          <td>驗收條件第 4 條跳票；迴路真實性未驗證，W2 拿假資料練打標沒意義</td></tr>
+    </table>
+
+    <div class="callout a">
+      <b>我建議 A3</b>（接 Remotive：官方公開 JSON API、免費無 key、含 <code>category</code>/<code>tags</code>/<code>salary</code>，剛好餵得動 W2 打標）。三個理由：
+      <ol style="margin-top:6px">
+        <li><b>你的真實目標是 AI 面試素材</b>（RAG / Agent / eval 深度），不是反爬蟲工程。迴路先轉起來，W2 才有東西可做。</li>
+        <li><b>這張卡真正要驗證的是抽象，不是來源。</b>Remotive 的資料形狀跟 104 差很多 —— 介面撐得住它，就是真的撐得住。</li>
+        <li><b>面試敘事</b>：「我探測到防護、判斷繞過在工程上不穩、在態度上不對，所以改接正式 API 並把 adapter 設計成可替換」是判斷力的展示。</li>
+      </ol>
+    </div>
+
+    <!-- Q A -->
+    <div class="q" data-qid="A" data-type="single" data-question="Phase 0 的第一個來源接誰">
+      <div class="q-head"><span class="q-id">A</span><span class="q-title">第一個來源接誰？</span><span class="q-type">單選</span></div>
+      <div class="q-sub">這題決定整張卡的形狀，其他都是細節。</div>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="qA" value="A1">
+          <span class="opt-b"><span class="opt-t">A1 · 硬上 104</span>
+            <span class="opt-d">用真實瀏覽器 session 撐過防護</span>
+            <span class="opt-cost">排程不穩 · 態度風險 · 面試扣分</span></span></label>
+        <label class="opt"><input type="radio" name="qA" value="A2">
+          <span class="opt-b"><span class="opt-t">A2 · Cake 先行</span>
+            <span class="opt-d">保留台灣市場定位，順序對調</span>
+            <span class="opt-cost">要再探測 API · 職缺量較少</span></span></label>
+        <label class="opt"><input type="radio" name="qA" value="A3">
+          <span class="opt-b"><span class="opt-t"><span class="star">★</span> A3 · 先接正式 API 來源（Remotive）</span>
+            <span class="opt-d">迴路優先，介面驗證最徹底</span>
+            <span class="opt-cost">英文遠端職缺 · 需多開 migration 003</span></span></label>
+        <label class="opt"><input type="radio" name="qA" value="A4">
+          <span class="opt-b"><span class="opt-t">A4 · 只用 fixture 打通迴路</span>
+            <span class="opt-d">最快完成 1/2/3/5 條驗收</span>
+            <span class="opt-cost">真實性未驗證 · 驗收第 4 條跳票</span></span></label>
+        <label class="opt"><input type="radio" name="qA" value="defer">
+          <span class="opt-b"><span class="opt-t">交給你判斷</span>
+            <span class="opt-d">我沒有強烈意見，照你的建議做</span></span></label>
+      </div>
+      <div class="note-wrap"><span>備註（選填）</span><input class="note" type="text" placeholder="想補充的條件或顧慮"></div>
+    </div>
+
+    <h3>決策 B：加不加 <code>tenacity</code></h3>
+    <p>dual-lens §5 已指定「指數退避重試（tenacity）」。自己手刻退避會多約 40 行且測試麻煩，代價是多一個依賴。</p>
+
+    <div class="q" data-qid="B" data-type="boolean" data-question="加入 tenacity 依賴？">
+      <div class="q-head"><span class="q-id">B</span><span class="q-title">加入 <code>tenacity</code>？</span><span class="q-type">是非</span></div>
+      <div class="q-sub">建議：是（照 dual-lens 既定選型）</div>
+      <div class="yn"><button type="button" data-v="yes">是，照設計加</button><button type="button" data-v="no">否，手刻退避</button></div>
+      <div class="note-wrap"><span>備註（選填）</span><input class="note" type="text" placeholder=""></div>
+    </div>
+
+    <h3>決策 C：「真實抓取 ≥200 筆」這條驗收</h3>
+    <p>Remotive 單次回應就有數百筆，選 A3 的話這條輕鬆達標；選 A4 則必須改寫或移卡。</p>
+
+    <div class="q" data-qid="C" data-type="single" data-question="≥200 筆驗收門檻怎麼處理">
+      <div class="q-head"><span class="q-id">C</span><span class="q-title">≥200 筆的門檻</span><span class="q-type">單選</span></div>
+      <div class="opts">
+        <label class="opt"><input type="radio" name="qC" value="keep">
+          <span class="opt-b"><span class="opt-t"><span class="star">★</span> 照舊 200 筆</span>
+            <span class="opt-d">維持原驗收條件</span></span></label>
+        <label class="opt"><input type="radio" name="qC" value="lower">
+          <span class="opt-b"><span class="opt-t">降到 50 筆</span>
+            <span class="opt-d">先證明管線通，量之後補</span></span></label>
+        <label class="opt"><input type="radio" name="qC" value="move">
+          <span class="opt-b"><span class="opt-t">移到另一張卡</span>
+            <span class="opt-d">這張只做介面與測試</span></span></label>
+      </div>
+      <div class="note-wrap"><span>備註（選填）</span><input class="note" type="text" placeholder=""></div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <h2><span class="n">4</span>檔案清單</h2>
+    <p class="lede">以決策 A = A3 估算。合計新程式碼約 800 行（含測試），在一張卡的範圍內，不用拆。</p>
+    <table>
+      <tr><th style="width:38%">路徑</th><th style="width:12%">動作</th><th>職責</th><th style="width:10%">行數</th></tr>
+      <tr><td><code>ingestion/models.py</code></td><td>新增</td><td><code>RawJob</code> / <code>JobPosting</code> 兩個 Pydantic model</td><td>70</td></tr>
+      <tr><td><code>ingestion/base.py</code></td><td>新增</td><td><code>SourceAdapter</code> Protocol + <code>RateLimiter</code></td><td>60</td></tr>
+      <tr><td><code>ingestion/adapters/remotive.py</code></td><td>新增</td><td>來源實作：抓取、重試、正規化</td><td>130</td></tr>
+      <tr><td><code>ingestion/repository.py</code></td><td>新增</td><td>upsert、content_hash 比對、crawl_runs 生命週期</td><td>150</td></tr>
+      <tr><td><code>ingestion/runner.py</code></td><td>新增</td><td>編排：開 run → 抓 → 正規化 → 落庫 → 收 run</td><td>90</td></tr>
+      <tr><td><code>ingestion/__main__.py</code></td><td>新增</td><td>CLI 進入點</td><td>30</td></tr>
+      <tr><td><code>alembic/versions/003_*.py</code></td><td>新增</td><td>放寬 <code>jobs.source</code> 的 CHECK</td><td>30</td></tr>
+      <tr><td><code>tests/ingestion/fixtures/*.json</code></td><td>新增</td><td>錄好的真實回應（前 20 筆）</td><td>—</td></tr>
+      <tr><td><code>tests/ingestion/test_normalize.py</code></td><td>新增</td><td>正規化邊界案例</td><td>120</td></tr>
+      <tr><td><code>tests/ingestion/test_runner.py</code></td><td>新增</td><td>去重、content_hash、crawl_runs 落地</td><td>130</td></tr>
+      <tr><td><code>pyproject.toml</code></td><td>修改</td><td>加 <code>tenacity</code></td><td>1</td></tr>
+      <tr><td><code>backend/DEBT.md</code></td><td>修改</td><td>登記新欠的債</td><td>3</td></tr>
+    </table>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <h2><span class="n">5</span>介面草稿</h2>
+<pre>class RawJob(BaseModel):
+    """來源回傳的原始資料，一個欄位都不解讀。"""
+    source: str
+    source_job_id: str
+    url: str
+    payload: dict[str, Any]        # 原封不動落進 jobs.jd_raw
+
+class JobPosting(BaseModel):
+    """正規化後的統一形狀，欄位對齊 jobs 表。"""
+    source: str
+    source_job_id: str
+    url: str
+    title: str
+    company_name: str
+    jd_text: str
+    salary_min: int | None = None
+    salary_max: int | None = None
+    salary_type: Literal["monthly", "annual", "negotiable"] | None = None
+    location: str | None = None
+    remote_policy: Literal["remote", "hybrid", "onsite"] | None = None
+    raw: dict[str, Any]
+
+    @property
+    def content_hash(self) -> str:
+        return hashlib.sha256(self.jd_text.encode()).hexdigest()
+
+class SourceAdapter(Protocol):
+    source: ClassVar[str]
+    async def search(self, query: SearchQuery) -> list[RawJob]: ...
+    def normalize(self, raw: RawJob) -> JobPosting: ...</pre>
+    <div class="callout">
+      <code>search</code> 是 async（打網路、要限速），<code>normalize</code> 是<b>同步純函式</b> ——
+      沒有 I/O，所以測試不需要任何 mock。這是刻意的切法：把「難測的部分」壓縮到最小。
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <h2><span class="n">6</span>測試策略</h2>
+    <p><b>測</b>：</p>
+    <ul>
+      <li><code>normalize()</code> 邊界 —— 薪資寫法（<code>"$50k - $70k"</code> / 面議 / 空值）、缺欄位、JD 夾雜 HTML、超長文字</li>
+      <li>去重 —— 同批出現兩次相同 url、跨批次重跑不重複插入</li>
+      <li><code>content_hash</code> —— JD 沒變時只動 <code>last_seen_at</code>，其他欄位不覆蓋</li>
+      <li><code>crawl_runs</code> —— 成功時三個計數正確；<b>中途拋例外時狀態變 <code>failed</code> 而非留在 <code>running</code></b></li>
+    </ul>
+    <p><b>怎麼測</b>：fixture 是一份真實回應存成 JSON（抓一次、存下來、之後永遠離線讀）。HTTP 層用 <code>httpx.MockTransport</code> 換掉 —— 不打真實網站，CI 也能跑。</p>
+    <p><b>不測</b>：真實網路請求、限速的實際等待時間（改測「limiter 有被呼叫」而不是測它真的睡了一秒）。</p>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <h2><span class="n">7</span>驗收對照</h2>
+    <table>
+      <tr><th style="width:62%">驗收條件</th><th>做完會滿足？</th></tr>
+      <tr><td><code>SourceAdapter</code> Protocol + <code>normalize</code></td><td><span class="ok">✅</span></td></tr>
+      <tr><td>限速、重試、原始 JSON 落 JSONB</td><td><span class="ok">✅</span></td></tr>
+      <tr><td>fixture 測試離線可測</td><td><span class="ok">✅</span></td></tr>
+      <tr><td>真實抓取 ≥200 筆入庫、url 去重</td><td><span class="ok">✅</span> 若選 A3／<span class="warn-i">⚠️</span> 若選 A4 則跳票</td></tr>
+      <tr><td><code>crawl_runs</code> 記錄每次執行</td><td><span class="ok">✅</span></td></tr>
+      <tr><td style="text-decoration:line-through">104 實作</td><td><span class="no">❌</span> 改成其他來源 —— 就是決策 A</td></tr>
+    </table>
+  </section>
+
+  <!-- 8 -->
+  <section>
+    <h2><span class="n">8</span>風險與技術債</h2>
+    <table>
+      <tr><th style="width:36%">債</th><th style="width:34%">為什麼現在欠</th><th>償還觸發條件</th></tr>
+      <tr><td>第一來源不是台灣職缺站</td><td>104 有防護、Cake 需再探測；迴路優先</td><td>Phase 1 公開前必須有台灣來源</td></tr>
+      <tr><td>無排程，只有手動 CLI</td><td>APScheduler 排在 KAN-23</td><td>KAN-23 動工時</td></tr>
+      <tr><td>公司正規化只做 trim</td><td>完整正規化在 KAN-17</td><td>KAN-17</td></tr>
+      <tr><td>單來源，無跨平台模糊去重</td><td>單來源時不存在這問題</td><td>第二個來源上線同時</td></tr>
+    </table>
+    <div class="callout a">
+      <b>最大風險</b>：換源之後，W2 的打標 prompt 與 golden set 都會建立在英文遠端職缺上。
+      等 Cake 接進來時，中文 JD 的打標品質<b>要重新驗證一次</b> ——
+      這件事現在就要寫進 DEBT，否則到時會誤以為 eval 分數可以沿用。
+    </div>
+
+    <div class="q" data-qid="D" data-type="text" data-question="其他要補的條件、反對理由，或希望我特別注意的地方">
+      <div class="q-head"><span class="q-id">D</span><span class="q-title">其他意見</span><span class="q-type">問答 · 選填</span></div>
+      <div class="q-sub">要補的條件、反對理由，或希望我特別注意的地方。留空也可以送出。</div>
+      <textarea rows="3" placeholder="例：adapter 介面要能同時容納中英文 JD，別把英文格式寫死"></textarea>
+    </div>
+  </section>
+
+  <p class="foot">SpecGate prototype · 一張卡一個閘門 · 報告版本 2026-08-18T17:05+08:00</p>
+</div>
+
+<!-- ===== 底部閘門列 ===== -->
+<div class="gate-bar">
+  <div class="gate-inner">
+    <span class="prog">已答 <b id="done">0</b> / <span id="total">3</span> 個必答題　<span class="draft-hint" id="draft"></span></span>
+    <span class="spacer"></span>
+    <button type="button" id="vChanges">要求修改</button>
+    <button type="button" id="vApprove">approve 動工</button>
+    <button type="button" id="save" disabled>儲存答案</button>
+  </div>
+  <div class="gate-inner"><textarea class="reason" id="reason" rows="2" placeholder="要求修改的話，寫下哪裡要改（必填）"></textarea></div>
+  <div class="saved-msg" id="saved"></div>
+</div>
+
+<script>
+const CARD = "KAN-15";
+const TITLE = "[Phase 0 / W1] 104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地";
+const REPORT_VERSION = "2026-08-18T17:05:00+08:00";
+const REQUIRED = ["A", "B", "C"];          // D 是選填
+const LSKEY = "specgate:" + CARD;
+
+const state = { answers: {}, verdict: null, verdict_note: "" };
+
+/* ---------- 收集答案 ---------- */
+function readAll() {
+  document.querySelectorAll('.q').forEach(q => {
+    const id = q.dataset.qid, type = q.dataset.type;
+    const a = { id, type, question: q.dataset.question };
+    if (type === 'single') {
+      const sel = q.querySelector('input[type=radio]:checked');
+      if (!sel) return delete state.answers[id];
+      a.choice = sel.value;
+      a.choice_label = sel.closest('.opt').querySelector('.opt-t').innerText.trim();
+      a.note = q.querySelector('input.note').value.trim();
+    } else if (type === 'boolean') {
+      const on = q.querySelector('.yn button.on-y, .yn button.on-n');
+      if (!on) return delete state.answers[id];
+      a.value = on.dataset.v === 'yes';
+      a.note = q.querySelector('input.note').value.trim();
+    } else {
+      const t = q.querySelector('textarea').value.trim();
+      if (!t) return delete state.answers[id];
+      a.text = t;
+    }
+    state.answers[id] = a;
+  });
+  state.verdict_note = document.getElementById('reason').value.trim();
+}
+
+/* ---------- 畫面同步 ---------- */
+function paint() {
+  document.querySelectorAll('.q').forEach(q => {
+    q.classList.toggle('answered', !!state.answers[q.dataset.qid]);
+    q.querySelectorAll('label.opt').forEach(l =>
+      l.classList.toggle('sel', l.querySelector('input').checked));
+  });
+  const done = REQUIRED.filter(id => state.answers[id]).length;
+  document.getElementById('done').textContent = done;
+  const complete = done === REQUIRED.length;
+
+  document.getElementById('vApprove').classList.toggle('on', state.verdict === 'approved');
+  document.getElementById('vChanges').classList.toggle('on', state.verdict === 'changes_requested');
+  document.getElementById('reason').parentElement.querySelector('.reason')
+    .classList.toggle('show', state.verdict === 'changes_requested');
+
+  const needReason = state.verdict === 'changes_requested' && !state.verdict_note;
+  // approve 需答完必答題；要求修改需填理由（不必答完 — 你可能一看方向就否決）
+  const canSave = state.verdict === 'approved' ? complete
+                : state.verdict === 'changes_requested' ? !needReason : false;
+  document.getElementById('save').disabled = !canSave;
+  document.getElementById('vApprove').disabled = !complete;
+  document.getElementById('vApprove').title = complete ? '' : '必答題還沒答完';
+}
+
+function sync() { readAll(); paint(); saveDraft(); }
+
+/* ---------- 草稿 ---------- */
+function saveDraft() {
+  localStorage.setItem(LSKEY, JSON.stringify({
+    v: REPORT_VERSION, state,
+    raw: {
+      A: (document.querySelector('input[name=qA]:checked') || {}).value || null,
+      C: (document.querySelector('input[name=qC]:checked') || {}).value || null,
+      B: (document.querySelector('[data-qid=B] .on-y') ? 'yes'
+          : document.querySelector('[data-qid=B] .on-n') ? 'no' : null),
+      D: document.querySelector('[data-qid=D] textarea').value,
+      notes: [...document.querySelectorAll('input.note')].map(n => n.value),
+      reason: document.getElementById('reason').value,
+      verdict: state.verdict
+    },
+    at: new Date().toISOString()
+  }));
+  const d = document.getElementById('draft');
+  d.textContent = '· 草稿已存 ' + new Date().toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+}
+
+function loadDraft() {
+  const s = localStorage.getItem(LSKEY); if (!s) return;
+  try {
+    const d = JSON.parse(s); if (d.v !== REPORT_VERSION) return;   // 報告改版就不套用舊草稿
+    const r = d.raw || {};
+    if (r.A) { const el = document.querySelector(`input[name=qA][value="${r.A}"]`); if (el) el.checked = true; }
+    if (r.C) { const el = document.querySelector(`input[name=qC][value="${r.C}"]`); if (el) el.checked = true; }
+    if (r.B) { const b = document.querySelector(`[data-qid=B] .yn button[data-v="${r.B}"]`);
+               if (b) b.classList.add(r.B === 'yes' ? 'on-y' : 'on-n'); }
+    if (r.D) document.querySelector('[data-qid=D] textarea').value = r.D;
+    (r.notes || []).forEach((v, i) => { const n = document.querySelectorAll('input.note')[i]; if (n) n.value = v; });
+    if (r.reason) document.getElementById('reason').value = r.reason;
+    state.verdict = r.verdict || null;
+  } catch (e) { /* 草稿壞掉就忽略 */ }
+}
+
+/* ---------- 事件 ---------- */
+document.querySelectorAll('.q input[type=radio], .q input.note, .q textarea')
+  .forEach(el => el.addEventListener('input', sync));
+
+document.querySelectorAll('.yn button').forEach(b => b.addEventListener('click', () => {
+  const grp = b.closest('.yn');
+  grp.querySelectorAll('button').forEach(x => x.classList.remove('on-y', 'on-n'));
+  b.classList.add(b.dataset.v === 'yes' ? 'on-y' : 'on-n');
+  sync();
+}));
+
+document.getElementById('vApprove').onclick = () => {
+  state.verdict = state.verdict === 'approved' ? null : 'approved'; sync();
+};
+document.getElementById('vChanges').onclick = () => {
+  state.verdict = state.verdict === 'changes_requested' ? null : 'changes_requested'; sync();
+};
+document.getElementById('reason').addEventListener('input', sync);
+
+/* ---------- 儲存 ---------- */
+document.getElementById('save').onclick = () => {
+  readAll();
+  const payload = {
+    schema_version: 1,
+    card: CARD,
+    title: TITLE,
+    report_version: REPORT_VERSION,
+    reviewed_at: new Date().toISOString(),
+    reviewer: "sam",
+    verdict: state.verdict,
+    verdict_note: state.verdict_note,
+    answers: Object.values(state.answers)
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = CARD + '-review.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+
+  navigator.clipboard && navigator.clipboard.writeText(json).catch(() => {});
+  const m = document.getElementById('saved');
+  m.innerHTML = '✅ 已存成 <code>~/Downloads/' + CARD + '-review.json</code>（同時複製到剪貼簿）'
+              + '<br>跟 Claude 說一句「<b>' + CARD + ' 答完了</b>」，我讀檔就開工。';
+  m.classList.add('show');
+};
+
+loadDraft(); sync();
+</script>
+</body>
+</html>
