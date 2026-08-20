@@ -7,7 +7,7 @@ Neo4j 是 `edges` 表的投影，不是真相 —— 所以任何時候砍掉都
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from devloop.db.models import Card, Decision, Edge
+from devloop.db.models import Card, Decision, Edge, Risk
 from devloop.graph.client import Edge as GraphEdge
 from devloop.graph.client import GraphStore, Node
 
@@ -30,6 +30,10 @@ def rebuild(session: Session, graph: GraphStore) -> tuple[int, int]:
                 summary=decision.text,
             )
         )
+        nodes += 1
+
+    for risk in session.scalars(select(Risk)).all():
+        graph.upsert_node(Node(id=str(risk.id), kind="Risk", label=risk.slug, summary=risk.text))
         nodes += 1
 
     edges = 0

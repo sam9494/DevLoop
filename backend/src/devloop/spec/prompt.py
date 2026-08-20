@@ -23,7 +23,7 @@ TEMPLATE = """你要為一張 Jira 卡寫「動工前的實作報告」，給一
 標題：{title}
 卡片內容：
 {description}
-
+{knowledge}
 請先實際讀這個專案的程式碼與設定（你的工作目錄就是專案根目錄），
 用**現況**寫報告，不要用規格書上的理想狀態。
 
@@ -34,6 +34,10 @@ TEMPLATE = """你要為一張 Jira 卡寫「動工前的實作報告」，給一
     {{"n": 1, "title": "目標", "body_md": "markdown 內容"}}
     // 八節都要有，順序與標題固定：
 {sections}
+  ],
+  "risks": [
+    {{"slug": "kebab-case", "text": "這張卡會留下什麼風險或技術債",
+      "owner_card": "真正該處理它的卡號，就是這張卡就填 null"}}
   ],
   "questions": [
     {{
@@ -57,6 +61,11 @@ TEMPLATE = """你要為一張 Jira 卡寫「動工前的實作報告」，給一
 - 每個選項都要寫出 cost（代價），只寫好處等於沒給人判斷依據。
 - 建議的選項標 recommended: true，一題最多一個。
 - slug 要能跨版本沿用：描述問題本身（source-choice），不要用編號（q1）。
+
+風險的規則：
+- 只列**做完這張卡之後仍然存在**的風險與技術債，不要列已經解掉的。
+- `owner_card` 是關鍵：如果這個風險真正該由另一張卡處理，就填那張卡的卡號。
+  那張卡開的時候會被強迫面對它。不確定就填 null。
 {revision}"""
 
 REVISION_NOTE = """
@@ -72,6 +81,7 @@ def build_prompt(
     key: str,
     title: str,
     description: str,
+    knowledge: str = "",
     revision_section: int | None = None,
     revision_reason: str = "",
 ) -> str:
@@ -82,6 +92,7 @@ def build_prompt(
         key=key,
         title=title,
         description=description or "（這張卡沒有內容）",
+        knowledge=knowledge,
         sections=_SECTION_LIST,
         revision=revision,
     )

@@ -447,3 +447,39 @@ def test_cancelling_a_finished_job_says_so(client: TestClient, session: Session)
 
     r = client.post(f"/jobs/{done.id}/cancel")
     assert "已經結束" in redirect_message(r)
+
+
+# ---------- 知識庫命中 ----------
+
+
+@needs_db
+def test_the_list_shows_what_the_knowledge_base_will_feed_claude(
+    client: TestClient, session: Session
+) -> None:
+    from devloop.db.models import Risk
+
+    client.post("/cards/sync")
+    other = Card(key="KAN-14", project="KAN", title="前一張卡")
+    session.add(other)
+    session.flush()
+    session.add(
+        Risk(
+            card_id=other.id,
+            slug="chinese-jd-quality",
+            text="中文 JD 品質未驗",
+            owner_card_key="KAN-15",
+        )
+    )
+    session.flush()
+
+    body = client.get("/").text
+    assert "🔗 知識庫命中 1 條" in body
+    assert "產生規格時會一起餵給 Claude" in body
+    assert "中文 JD 品質未驗" in body
+    assert "指派給這張卡" in body
+
+
+@needs_db
+def test_no_hits_means_no_panel(client: TestClient) -> None:
+    client.post("/cards/sync")
+    assert "知識庫命中" not in client.get("/").text

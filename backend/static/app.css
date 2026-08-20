@@ -194,3 +194,15 @@ section.revise textarea:focus, section.revise select:focus {
   background:#f0f3f8; padding:4px 11px; border-radius:999px;
 }
 .budget.over { background:var(--red-soft); color:var(--red); font-weight:700; }
+
+/* ===== 知識庫命中 ===== */
+.kg-hit { margin-top:10px; background:var(--teal-soft, #e6f7f5); border-radius:9px; padding:9px 12px; }
+.kg-hit summary { cursor:pointer; font-size:.83rem; font-weight:700; color:#0d9488; }
+.kg-hit .hit { margin-top:9px; padding-top:8px; border-top:1px dashed rgba(13,148,136,.28); }
+.kg-hit .hit:first-of-type { border-top:0; }
+.kg-hit .hit-kind { font-size:.68rem; font-weight:800; padding:1px 7px; border-radius:5px; }
+.kg-hit .hit-kind.decision { background:#e0e7ff; color:#4338ca; }
+.kg-hit .hit-kind.risk { background:var(--red-soft); color:var(--red); }
+.kg-hit .hit-src { font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-left:6px; }
+.kg-hit .hit-why { font-size:.72rem; color:var(--muted); margin-left:6px; }
+.kg-hit .hit-text { font-size:.86rem; margin-top:2px; line-height:1.6; }

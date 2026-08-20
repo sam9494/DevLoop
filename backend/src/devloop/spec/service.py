@@ -9,10 +9,21 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from devloop.db.models import Answer, Card, Decision, Edge, Job, Question, Report, Section
+from devloop.db.models import (
+    Answer,
+    Card,
+    Decision,
+    Edge,
+    Job,
+    Question,
+    Report,
+    Risk,
+    Section,
+)
 from devloop.graph.client import Edge as GraphEdge
 from devloop.graph.client import GraphStore, Node
 from devloop.runner.claude import LlmRunner, extract_json_object
+from devloop.spec.knowledge import recall
 from devloop.spec.prompt import SECTIONS, build_prompt
 
 
@@ -53,10 +64,12 @@ def enqueue_generation(
     revision_reason: str = "",
 ) -> Job:
     """只排隊，不執行 —— 執行是 worker 的事，HTTP 請求不該等在那裡。"""
+    memory = recall(session, card.project, card)
     prompt = build_prompt(
         card.key,
         card.title,
         card.description or "",
+        knowledge=memory.as_prompt_block(),
         revision_section=revision_section,
         revision_reason=revision_reason,
     )
@@ -195,9 +208,33 @@ def _persist_report(session: Session, card: Card, payload: dict[str, Any]) -> Re
         )
     session.flush()
 
+    _replace_risks(session, card, payload.get("risks") or [])
+
     if previous is not None:
         _carry_over_answers(session, previous, report)
     return report
+
+
+def _replace_risks(session: Session, card: Card, raw_risks: list[dict[str, Any]]) -> None:
+    """一張卡的風險以最新一版報告為準 —— 改版後舊的那批就不算數了。"""
+    for stale in session.scalars(select(Risk).where(Risk.card_id == card.id)).all():
+        session.delete(stale)
+    session.flush()
+
+    for raw in raw_risks:
+        text = str(raw.get("text") or "").strip()
+        if not text:
+            continue
+        owner = raw.get("owner_card")
+        session.add(
+            Risk(
+                card_id=card.id,
+                slug=str(raw.get("slug") or "risk"),
+                text=text,
+                owner_card_key=str(owner).strip() if owner else None,
+            )
+        )
+    session.flush()
 
 
 def _previous_report(session: Session, card: Card, current: Report) -> Report | None:
@@ -344,6 +381,11 @@ def freeze(session: Session, report: Report, graph: GraphStore | None = None) ->
         decisions.append(decision)
         edges.append(edge)
 
+    risks = list(session.scalars(select(Risk).where(Risk.card_id == card.id)).all())
+    for risk in risks:
+        session.merge(Edge(from_id=card.id, to_id=risk.id, kind="RAISED"))
+    session.flush()
+
     report.state = "frozen"
     report.version = "v1.0"
     report.frozen_at = datetime.now(UTC)
@@ -353,15 +395,23 @@ def freeze(session: Session, report: Report, graph: GraphStore | None = None) ->
     graph_error: str | None = None
     if graph is not None:
         try:
-            sync_to_graph(graph, card, decisions)
+            sync_to_graph(graph, card, decisions, risks)
         except Exception as exc:
             graph_error = str(exc)
 
     return FreezeOutcome(report=report, decisions=decisions, edges=edges, graph_error=graph_error)
 
 
-def sync_to_graph(graph: GraphStore, card: Card, decisions: list[Decision]) -> None:
+def sync_to_graph(
+    graph: GraphStore,
+    card: Card,
+    decisions: list[Decision],
+    risks: list[Risk] | None = None,
+) -> None:
     graph.upsert_node(Node(id=str(card.id), kind="Card", label=card.key, summary=card.title))
+    for risk in risks or []:
+        graph.upsert_node(Node(id=str(risk.id), kind="Risk", label=risk.slug, summary=risk.text))
+        graph.upsert_edge(GraphEdge(from_id=str(card.id), to_id=str(risk.id), kind="RAISED"))
     for decision in decisions:
         graph.upsert_node(
             Node(id=str(decision.id), kind="Decision", label=decision.slug, summary=decision.text)

@@ -49,6 +49,19 @@
         </form>
       {% endif %}
     </div>
+    {% if row.recall and row.recall.count %}
+    <details class="kg-hit">
+      <summary>🔗 知識庫命中 {{ row.recall.count }} 條 —— 產生規格時會一起餵給 Claude</summary>
+      {% for hit in row.recall.hits %}
+      <div class="hit">
+        <span class="hit-kind {{ hit.kind }}">{{ '決策' if hit.kind == 'decision' else '風險' }}</span>
+        <span class="hit-src">{{ hit.source_card }}</span>
+        <span class="hit-why">{{ hit.reason }}</span>
+        <div class="hit-text">{{ hit.text }}</div>
+      </div>
+      {% endfor %}
+    </details>
+    {% endif %}
     {% if row.job_error %}<div class="note" style="color:var(--red);margin-top:7px">上次產生失敗：{{ row.job_error }}</div>{% endif %}
   </div>
   {% endfor %}

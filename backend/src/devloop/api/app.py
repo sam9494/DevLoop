@@ -27,7 +27,7 @@ from devloop.jira.sync import sync_cards
 from devloop.runner.claude import ClaudeCliRunner, registry
 from devloop.runner.worker import Worker
 from devloop.spec import budget as budget_service
-from devloop.spec import service
+from devloop.spec import knowledge, service
 
 settings = get_settings()
 configure(settings.log_level)
@@ -166,6 +166,7 @@ class CardRow:
     job_running: bool
     job_error: str | None
     running_job_id: uuid.UUID | None = None
+    recall: knowledge.Recall | None = None
 
     @property
     def gate_class(self) -> str:
@@ -208,6 +209,7 @@ def _card_rows(session: Session, project: str) -> list[CardRow]:
                 running_job_id=last.id
                 if last is not None and last.status in ("queued", "running")
                 else None,
+                recall=knowledge.recall(session, project, card),
             )
         )
     return rows

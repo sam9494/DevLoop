@@ -162,6 +162,24 @@ class Decision(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=sa.func.now())
 
 
+class Risk(Base):
+    """報告裡列出的風險。
+
+    重點是 `owner_card_key`：KAN-15 記下的風險，真正該處理的可能是 KAN-16。
+    沒有這個欄位，風險就只是報告裡的一段字；有了它，下一張卡開的時候會被迫面對。
+    """
+
+    __tablename__ = "risks"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid7)
+    card_id: Mapped[uuid.UUID] = mapped_column(sa.ForeignKey("cards.id"), index=True)
+    slug: Mapped[str]
+    text: Mapped[str]
+    owner_card_key: Mapped[str | None] = mapped_column(index=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=sa.func.now())
+
+
 class Edge(Base):
     """圖的邊。Neo4j 是這張表的投影 —— 砍掉可以整個重建（rebuild-graph）。"""
 
