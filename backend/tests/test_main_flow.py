@@ -134,7 +134,7 @@ def test_the_report_page_shows_sections_and_inline_questions(
     assert "第一個來源接誰" in body
     assert "source-choice" in body
     assert "以上皆非" in body
-    assert "已答 <b>0</b> / 2 題必答" in body
+    assert '已答 <b id="progress-count">0</b> / 2 題必答' in body
 
 
 @needs_db
@@ -148,7 +148,7 @@ def test_answers_are_saved_and_progress_moves(client: TestClient, session: Sessi
     )
 
     body = client.get("/cards/KAN-15").text
-    assert "已答 <b>1</b> / 2 題必答" in body
+    assert '已答 <b id="progress-count">1</b> / 2 題必答' in body
     assert "104 之後再說" in body
 
 
@@ -332,3 +332,36 @@ def test_a_frozen_report_has_no_send_back_button(client: TestClient, session: Se
 
     body = client.get("/cards/KAN-15").text
     assert 'formaction="/cards/KAN-15/revise"' not in body
+
+
+# ---------- 草稿保存的接線 ----------
+
+
+@needs_db
+def test_the_page_carries_what_the_draft_script_needs(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+
+    body = client.get("/cards/KAN-15").text
+    assert '<script src="/static/gate.js">' in body
+    # 草稿 key 綁版本 —— 改版後不會把舊答案錯置到新題目上
+    assert 'data-card="KAN-15"' in body
+    assert 'data-version="v0.1"' in body
+    assert 'data-slug="source-choice"' in body
+    assert 'data-required="1"' in body
+    assert 'data-required="0"' in body  # extra-notes 是選填
+    assert 'id="progress-count"' in body
+    assert 'id="freeze-btn"' in body
+
+
+@needs_db
+def test_a_frozen_page_tells_the_script_to_stay_out(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+    client.post(
+        "/cards/KAN-15/freeze",
+        data={"choice__source-choice": "a3", "value__tenacity-dep": "yes"},
+    )
+
+    body = client.get("/cards/KAN-15").text
+    assert 'data-frozen="1"' in body

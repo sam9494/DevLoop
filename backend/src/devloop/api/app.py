@@ -253,6 +253,7 @@ class QuestionView:
     text: str | None
     note: str
     is_answered: bool
+    required: bool
 
 
 def _build_view(session: Session, report: Report) -> tuple[list[Any], int, int]:
@@ -274,6 +275,7 @@ def _build_view(session: Session, report: Report) -> tuple[list[Any], int, int]:
                 text=a.text if a else None,
                 note=(a.note if a else "") or "",
                 is_answered=q.slug not in missing and a is not None,
+                required=q.required,
             )
         )
 

@@ -26,14 +26,17 @@
 
 {% if message %}<div class="status {{ message_kind }}"><b>{{ message }}</b></div>{% endif %}
 
-<form method="post" action="/cards/{{ card.key }}/answers" id="gateform">
+<form method="post" action="/cards/{{ card.key }}/answers" id="gateform"
+      data-card="{{ card.key }}" data-version="{{ report.version }}"
+      data-frozen="{{ 1 if frozen else 0 }}">
 {% for section in sections %}
   <section class="report {{ 'hot' if section.n == 3 else '' }}">
     <h2><span class="n">{{ '%02d' % section.n }}</span>{{ section.title }}</h2>
     <div class="body-md">{{ section.body_html | safe }}</div>
 
     {% for q in section.questions %}
-    <div class="q {{ 'answered' if q.is_answered else '' }}">
+    <div class="q {{ 'answered' if q.is_answered else '' }}"
+         data-slug="{{ q.slug }}" data-required="{{ 1 if q.required else 0 }}">
       <div class="q-head">
         <span class="q-id">{{ q.slug }}</span>
         <span class="q-title">{{ q.prompt }}</span>
@@ -111,10 +114,10 @@
 
 <div class="gate-bar">
   <div class="gate-inner">
-    <span class="prog">已答 <b>{{ answered_count }}</b> / {{ required_count }} 題必答</span>
+    <span class="prog">已答 <b id="progress-count">{{ answered_count }}</b> / {{ required_count }} 題必答<span class="draft-hint" id="draft-hint"></span></span>
     <span class="spacer" style="flex:1"></span>
     <button type="submit" class="ghost">儲存答案</button>
-    <button type="submit" formaction="/cards/{{ card.key }}/freeze"
+    <button type="submit" id="freeze-btn" formaction="/cards/{{ card.key }}/freeze"
             {{ 'disabled' if answered_count < required_count }}
             title="{{ '還有題目沒答完' if answered_count < required_count else '' }}">
       凍結並開工
@@ -125,3 +128,5 @@
 </form>
 
 {% endblock %}
+
+{% block scripts %}<script src="/static/gate.js"></script>{% endblock %}

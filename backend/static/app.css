@@ -163,6 +163,7 @@ label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
 .prog b { color:var(--ink); }
 .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
 body.has-gate { padding-bottom:120px; }
+.draft-hint { font-size:.76rem; color:var(--muted); font-family:var(--mono); margin-left:8px; }
 .empty { text-align:center; color:var(--muted); padding:38px 0; font-size:.92rem; }
 
 /* ===== 要求修改 ===== */
