@@ -376,7 +376,9 @@ def test_a_frozen_page_tells_the_script_to_stay_out(client: TestClient, session:
 def test_the_card_list_shows_what_today_has_cost(client: TestClient) -> None:
     client.post("/cards/sync")
     body = client.get("/").text
-    assert "今日已用 US$0.00 / 上限 US$10.00" in body
+    assert "今日用量 US$0.00 / 自訂上限 US$10.00" in body
+    # 講清楚這不是帳單 —— 走訂閱時 total_cost_usd 只是 API 費率換算
+    assert "訂閱不收這筆" in body
 
 
 @needs_db

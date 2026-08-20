@@ -140,6 +140,10 @@ class Job(Base):
     cost_usd: Mapped[float | None] = mapped_column(sa.Numeric(10, 6))
     num_turns: Mapped[int | None] = mapped_column(sa.SmallInteger)
     permission_denials: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    # 訂閱用量視窗的狀態（allowed / rejected…）與重置時間。
+    # cost_usd 是 API 費率換算，走訂閱時不會被收費 —— 真正會擋住人的是這兩欄。
+    rate_limit_status: Mapped[str | None]
+    rate_limit_resets_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     git_head_before: Mapped[str | None] = mapped_column(sa.CHAR(40))
     git_head_after: Mapped[str | None] = mapped_column(sa.CHAR(40))
     stdout: Mapped[str | None]

@@ -135,6 +135,11 @@ def run_job(session: Session, job: Job, runner: LlmRunner, timeout_s: int) -> Jo
     job.cost_usd = outcome.cost_usd
     job.num_turns = outcome.num_turns
     job.permission_denials = outcome.permission_denials or None
+    if outcome.rate_limit:
+        job.rate_limit_status = str(outcome.rate_limit.get("status") or "")
+        resets = outcome.rate_limit.get("resetsAt")
+        if resets:
+            job.rate_limit_resets_at = datetime.fromtimestamp(int(resets), tz=UTC)
     job.stdout = outcome.transcript or outcome.result_text
     job.finished_at = datetime.now(UTC)
 

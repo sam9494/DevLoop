@@ -13,7 +13,13 @@
     <form method="post" action="/cards/sync">
       <button type="submit">從 Jira 重新同步</button>
     </form>
-    <span class="budget {{ 'over' if budget.exhausted else '' }}">{{ budget.summary }}</span>
+    {% if budget.rate_limit %}
+    <span class="budget {{ '' if budget.rate_limit.ok else 'over' }}"
+          title="這才是真正會擋住你的東西 —— 用完連互動 session 也會被鎖">
+      {{ budget.rate_limit.summary }}
+    </span>
+    {% endif %}
+    <span class="budget soft {{ 'over' if budget.exhausted else '' }}">{{ budget.summary }}</span>
     {% if synced %}<span class="note">剛剛同步了 {{ synced }} 張。</span>{% endif %}
     {% if error %}<span class="note" style="color:var(--red)">{{ error }}</span>{% endif %}
   </div>

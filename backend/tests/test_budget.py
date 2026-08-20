@@ -11,6 +11,7 @@ from devloop.db.models import Card, Job
 from devloop.runner.claude import ClaudeCliRunner, ProcessRegistry
 from devloop.spec import budget as budget_service
 from tests.conftest import needs_db
+from tests.test_runner import RESULT
 
 
 def _job(session, cost: float | None, when=None, status="succeeded") -> Job:  # type: ignore[no-untyped-def]
@@ -51,7 +52,8 @@ def test_todays_costs_add_up(session) -> None:  # type: ignore[no-untyped-def]
 
     b = budget_service.budget_for(session, 10)
     assert round(b.spent_today_usd, 2) == 1.77
-    assert b.summary == "今日已用 US$1.77 / 上限 US$10.00"
+    assert b.summary.startswith("今日用量 US$1.77 / 自訂上限 US$10.00")
+    assert "訂閱不收這筆" in b.summary  # 這個數字不是帳單，是 API 費率換算
 
 
 @needs_db
@@ -164,3 +166,64 @@ def test_a_run_that_overruns_is_killed_and_reported(tmp_path: Path) -> None:
 def test_a_missing_binary_is_a_clear_message(tmp_path: Path) -> None:
     out = ClaudeCliRunner("/does/not/exist").run("p", tmp_path, "plan", 5)
     assert "沒安裝或不在 PATH" in (out.error or "")
+
+
+# ---------- 訂閱用量視窗（真正會擋住人的東西） ----------
+
+
+@needs_db
+def test_the_subscription_window_is_read_from_what_claude_reported(session) -> None:  # type: ignore[no-untyped-def]
+    from datetime import datetime
+
+    job = _job(session, 1.0)
+    job.rate_limit_status = "allowed"
+    job.rate_limit_resets_at = datetime(2026, 8, 20, 12, 50, tzinfo=UTC)
+    session.flush()
+
+    limit = budget_service.latest_rate_limit(session)
+    assert limit is not None and limit.ok
+    assert "額度正常" in limit.summary
+    assert "重置" in limit.summary
+
+
+@needs_db
+def test_a_blocked_window_is_not_ok(session) -> None:  # type: ignore[no-untyped-def]
+    job = _job(session, 1.0)
+    job.rate_limit_status = "rejected"
+    session.flush()
+
+    limit = budget_service.latest_rate_limit(session)
+    assert limit is not None and not limit.ok
+    assert "額度狀態 rejected" in limit.summary
+
+
+@needs_db
+def test_no_run_yet_means_no_window_info(session) -> None:  # type: ignore[no-untyped-def]
+    _job(session, 1.0)  # 沒有 rate_limit_status
+    assert budget_service.latest_rate_limit(session) is None
+
+
+def test_the_runner_picks_the_rate_limit_event_out_of_the_stream() -> None:
+    import json as _json
+
+    stream = "\n".join(
+        _json.dumps(e)
+        for e in [
+            {
+                "type": "rate_limit_event",
+                "rate_limit_info": {
+                    "status": "allowed",
+                    "resetsAt": 1787201400,
+                    "rateLimitType": "five_hour",
+                },
+            },
+            {"type": "system", "subtype": "init"},
+            {**RESULT},
+        ]
+    )
+    out = ClaudeCliRunner._parse(stream, "", 0)
+
+    assert out.ok
+    assert out.rate_limit is not None
+    assert out.rate_limit["status"] == "allowed"
+    assert out.rate_limit["rateLimitType"] == "five_hour"

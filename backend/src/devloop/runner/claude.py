@@ -36,6 +36,8 @@ class RunResult:
     error: str | None = None
     transcript: str = ""
     cancelled: bool = False
+    # 訂閱的用量視窗 —— 這才是真正會擋住你的東西，cost_usd 只是換算給你看的
+    rate_limit: dict[str, Any] | None = None
 
 
 class LlmRunner(Protocol):
@@ -206,6 +208,8 @@ class ClaudeCliRunner:
                 continue
 
         final = next((e for e in reversed(events) if e.get("type") == "result"), None)
+        limit_event = next((e for e in events if e.get("type") == "rate_limit_event"), None)
+        rate_limit = (limit_event or {}).get("rate_limit_info")
         transcript = stdout
 
         if final is None:
@@ -214,6 +218,7 @@ class ClaudeCliRunner:
                 ok=False,
                 error=f"Claude Code 沒有回傳結果（離開碼 {returncode}）：{detail}",
                 transcript=transcript,
+                rate_limit=rate_limit,
             )
 
         return RunResult(
@@ -225,6 +230,7 @@ class ClaudeCliRunner:
             permission_denials=list(final.get("permission_denials") or []),
             error=None if final.get("subtype") == "success" else str(final.get("subtype")),
             transcript=transcript,
+            rate_limit=rate_limit,
         )
 
 

@@ -65,11 +65,19 @@ make rebuild-graph        # 清空 Neo4j 並從 Postgres 的 edges 表重建
 
 ## 一次規格產生要多少
 
-實測（KAN-16，讀完整個 JobRadar backend）：**US$1.68 / 39 turns / 7 分鐘**。
-空轉一句話是 US$0.09 —— 那是系統提示快取的地板，不是實際工作的價錢。
-每個 job 的成本都落在 `jobs.cost_usd`，卡片列表顯示「今日已用 / 上限」。
-超過上限就不再排新工作；執行中的工作可以按「中止」——
-那會把整個行程群組殺掉，不是只改狀態。
+實測（KAN-16，讀完整個 JobRadar backend）：**39 turns / 7 分鐘 / `total_cost_usd` 1.68**。
+
+**那個美金數字不是帳單。** 走本機 Claude Code 時吃的是訂閱，`total_cost_usd`
+是「同樣的 token 換算成 API 費率會是多少」。它跟 token 消耗成正比，所以拿來當
+用量的代理指標很好用 —— 但沒有人會跟你收這筆錢。
+
+真正會擋住你的是訂閱的**用量視窗**（`rate_limit_info`，目前是五小時一輪）。
+用完不只 DevLoop 停擺，**你自己開的 Claude Code 互動 session 也會一起被鎖**。
+每個 job 都會把當下的視窗狀態記進 `jobs.rate_limit_status` /
+`rate_limit_resets_at`，卡片列表上直接顯示。
+
+設定頁的「每日用量上限」因此是一道**自律閘**：避免背景工作把五小時視窗吃光。
+執行中的工作可以按「中止」—— 那會把整個行程群組殺掉，不是只改狀態。
 
 ## 憑證怎麼保管
 
