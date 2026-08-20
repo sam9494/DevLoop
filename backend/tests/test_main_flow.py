@@ -369,22 +369,23 @@ def test_a_frozen_page_tells_the_script_to_stay_out(client: TestClient, session:
     assert 'data-frozen="1"' in body
 
 
-# ---------- 成本煞車 ----------
+# ---------- 用量 ----------
 
 
 @needs_db
-def test_the_card_list_shows_what_today_has_cost(client: TestClient) -> None:
+def test_the_list_shows_real_usage_not_a_money_estimate(client: TestClient) -> None:
     client.post("/cards/sync")
     body = client.get("/").text
-    assert "今日用量 US$0.00 / 自訂上限 US$10.00" in body
-    # 講清楚這不是帳單 —— 走訂閱時 total_cost_usd 只是 API 費率換算
-    assert "訂閱不收這筆" in body
+    assert "今天還沒跑過" in body
+    assert "US$" not in body  # 那個數字不是帳單，不放在主畫面上誤導人
 
 
 @needs_db
-def test_generating_is_blocked_once_the_daily_limit_is_reached(
+def test_generating_is_blocked_when_claude_says_the_window_is_used_up(
     client: TestClient, session: Session
 ) -> None:
+    from datetime import UTC, datetime, timedelta
+
     from devloop.db.models import Job
 
     client.post("/cards/sync")
@@ -397,18 +398,15 @@ def test_generating_is_blocked_once_the_daily_limit_is_reached(
             prompt="p",
             cwd="/tmp",
             permission_mode="plan",
-            cost_usd=10.0,
+            rate_limit_status="rejected",
+            rate_limit_resets_at=datetime.now(UTC) + timedelta(hours=2),
         )
     )
     session.flush()
 
     r = client.post("/cards/KAN-15/generate")
-    assert "今日成本已達上限" in redirect_message(r)
-
-    # 沒有排出新的工作
+    assert "額度用完" in redirect_message(r)
     assert session.query(Job).filter_by(status="queued").count() == 0
-    # 而且按鈕是停用的
-    assert "今日成本已達上限" in client.get("/").text
 
 
 @needs_db

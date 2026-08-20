@@ -26,8 +26,8 @@ from devloop.jira.connections import client_for, get_connection, save_connection
 from devloop.jira.sync import sync_cards
 from devloop.runner.claude import ClaudeCliRunner, registry
 from devloop.runner.worker import Worker
-from devloop.spec import budget as budget_service
 from devloop.spec import knowledge, service
+from devloop.spec import usage as usage_service
 
 settings = get_settings()
 configure(settings.log_level)
@@ -129,7 +129,6 @@ def settings_save(
     email: Annotated[str, Form()],
     project: Annotated[str, Form()],
     workspace: Annotated[str, Form()],
-    daily_limit: Annotated[float, Form()] = 10.0,
     token: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     try:
@@ -140,7 +139,6 @@ def settings_save(
             email=email.strip(),
             project=project.strip().upper(),
             workspace=workspace.strip(),
-            daily_limit_usd=daily_limit,
             token=token.strip() or None,
             verifier=verifier,
         )
@@ -225,7 +223,7 @@ def cards_page(
         {
             "cards": _card_rows(session, conn.jira_project),
             "connection": to_view(conn),
-            "budget": budget_service.budget_for(session, float(conn.daily_cost_limit_usd)),
+            "usage": usage_service.usage_today(session),
             "nav": "cards",
             "synced": synced or None,
             "error": error or None,
@@ -251,10 +249,11 @@ def card_generate(key: str, session: SessionDep, conn: ConnDep) -> RedirectRespo
     if view.workspace.error:
         return RedirectResponse(f"/?error={view.workspace.error}", status_code=303)
 
-    budget = budget_service.budget_for(session, float(conn.daily_cost_limit_usd))
-    if budget.exhausted:
+    usage = usage_service.usage_today(session)
+    if usage.blocked and usage.rate_limit is not None:
+        # Claude 自己說額度用完了 —— 這時候硬排只會失敗，而且會連累互動 session
         return RedirectResponse(
-            f"/?error=今日成本已達上限（{budget.summary}）—— 到設定頁調高才能繼續",
+            f"/?error={usage.rate_limit.summary} —— 等視窗重置再產生規格",
             status_code=303,
         )
 

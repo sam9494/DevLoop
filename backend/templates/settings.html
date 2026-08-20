@@ -85,19 +85,6 @@
              placeholder="/Users/你/專案/repo">
     </div>
 
-    <div class="field">
-      <label for="daily_limit">每日用量上限</label>
-      <span class="hint">
-        <b>這不是帳單。</b>你用的是本機 Claude Code、吃訂閱，這個數字是
-        「同樣的 token 換算成 API 費率會是多少錢」—— 拿來當用量的代理指標。
-        一次規格產生實測約 <b>US$1.68</b>（讀完一個中型 repo）。<br>
-        真正會擋住你的是訂閱的<b>五小時用量視窗</b>，用完連你自己開的
-        Claude Code 也會一起被鎖。這道上限是自律閘：<b>避免背景工作把視窗吃光</b>。
-      </span>
-      <input id="daily_limit" name="daily_limit" type="number" step="0.5" min="0" required
-             value="{{ '%.2f'|format(conn.daily_cost_limit_usd) if conn else '10.00' }}">
-    </div>
-
     <div class="actions">
       <button type="submit">儲存並驗證</button>
       <span class="note">按下去會立刻打一次 Jira，成功才算數。</span>
