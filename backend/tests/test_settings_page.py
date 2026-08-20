@@ -79,3 +79,31 @@ def test_revisiting_the_page_still_hides_the_token(client: TestClient) -> None:
 
     assert SECRET not in r.text
     assert "留空 = 不更換" in r.text
+
+
+@needs_db
+def test_the_states_do_not_contradict_each_other(client: TestClient) -> None:
+    """曾經同時顯示「已連上」和「還沒設定」—— 條件鏈被改壞了，畫面上才看得出來。"""
+    empty = client.get("/settings").text
+    assert "還沒設定" in empty
+    assert "已連上 Jira" not in empty
+
+    client.post("/settings", data=FORM)
+
+    configured = client.get("/settings").text
+    assert "已連上 Jira" in configured
+    assert "還沒設定" not in configured
+
+
+@needs_db
+def test_a_workspace_without_git_is_flagged_but_not_blocking(session: Session, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    fake = FakeJira()
+    app.dependency_overrides[get_session] = lambda: session
+    app.dependency_overrides[get_verifier] = lambda: fake
+    try:
+        c = TestClient(app)
+        body = c.post("/settings", data={**FORM, "workspace": str(tmp_path)}).text
+        assert "沒有還原點" in body
+        assert "已連上 Jira" in body  # 仍然算連上
+    finally:
+        app.dependency_overrides.clear()
