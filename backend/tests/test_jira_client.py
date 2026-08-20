@@ -22,7 +22,7 @@ def load(name: str) -> dict:  # type: ignore[type-arg]
 def client_with(handler) -> HttpJiraClient:  # type: ignore[no-untyped-def]
     transport = httpx.MockTransport(handler)
     return HttpJiraClient(
-        "swallowhouse.atlassian.net",
+        "example.atlassian.net",
         "sam@example.com",
         "tok",
         client=httpx.Client(transport=transport),
@@ -46,9 +46,9 @@ def test_verify_returns_the_identity_behind_the_token() -> None:
 
     identity = client_with(handler).verify()
 
-    assert identity.account_id == "5d9b254c45fad00dc125f960"
-    assert identity.display_name == "sam chong"
-    assert seen["url"] == "https://swallowhouse.atlassian.net/rest/api/3/myself"
+    assert identity.account_id == "557058:00000000-1111-2222-3333-444444444444"
+    assert identity.display_name == "Example User"
+    assert seen["url"] == "https://example.atlassian.net/rest/api/3/myself"
     assert seen["auth"].startswith("Basic ")  # email + token 走 basic auth
 
 
@@ -71,12 +71,12 @@ def test_a_wrong_site_is_reported_as_a_connection_problem() -> None:
 
 def test_the_site_can_be_given_with_or_without_the_scheme() -> None:
     for given in [
-        "swallowhouse.atlassian.net",
-        "https://swallowhouse.atlassian.net",
-        "https://swallowhouse.atlassian.net/",
+        "example.atlassian.net",
+        "https://example.atlassian.net",
+        "https://example.atlassian.net/",
     ]:
         c = HttpJiraClient(given, "s@x.com", "t")
-        assert c._base == "https://swallowhouse.atlassian.net"
+        assert c._base == "https://example.atlassian.net"
 
 
 # ---------- open_cards ----------
@@ -100,7 +100,7 @@ def test_open_cards_maps_the_real_issue_shape() -> None:
     first = cards[0]
     assert first.status == "待辦事項"
     assert first.labels == ["ingestion", "phase-0", "week-1"]
-    assert first.url == "https://swallowhouse.atlassian.net/browse/KAN-15"
+    assert first.url == "https://example.atlassian.net/browse/KAN-15"
 
 
 def test_missing_optional_fields_do_not_blow_up() -> None:

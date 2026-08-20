@@ -208,7 +208,7 @@ class Connection(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid7)
     owner_key: Mapped[str] = mapped_column(unique=True)
-    jira_site: Mapped[str]  # swallowhouse.atlassian.net
+    jira_site: Mapped[str]  # 例如 example.atlassian.net
     jira_email: Mapped[str]
     jira_token_encrypted: Mapped[str]
     jira_project: Mapped[str]

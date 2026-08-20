@@ -4,12 +4,12 @@
     {
       "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
       "id": "10024",
-      "self": "https://swallowhouse.atlassian.net/rest/api/3/issue/10024",
+      "self": "https://example.atlassian.net/rest/api/3/issue/10024",
       "key": "KAN-15",
       "fields": {
         "summary": "[Phase 0 / W1] 104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地",
         "status": {
-          "self": "https://swallowhouse.atlassian.net/rest/api/3/status/10004",
+          "self": "https://example.atlassian.net/rest/api/3/status/10004",
           "description": "",
           "name": "待辦事項",
           "id": "10004",
@@ -26,7 +26,7 @@
     },
     {
       "id": "10025",
-      "self": "https://swallowhouse.atlassian.net/rest/api/3/issue/10025",
+      "self": "https://example.atlassian.net/rest/api/3/issue/10025",
       "key": "KAN-16",
       "fields": {
         "summary": "[Phase 0 / W2] 打標模組：structured outputs + content_hash 快取",
