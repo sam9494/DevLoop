@@ -39,16 +39,22 @@ class JiraClient(Protocol):
 
 
 class HttpJiraClient:
-    def __init__(self, site: str, email: str, token: str, timeout: float = 15.0) -> None:
+    def __init__(
+        self,
+        site: str,
+        email: str,
+        token: str,
+        timeout: float = 15.0,
+        client: httpx.Client | None = None,
+    ) -> None:
         self._base = f"https://{site.strip().removeprefix('https://').rstrip('/')}"
         self._auth = (email, token)
         self._timeout = timeout
+        self._client = client or httpx.Client(timeout=timeout)
 
     def _get(self, path: str, params: dict[str, str] | None = None) -> dict[str, Any]:
         try:
-            r = httpx.get(
-                f"{self._base}{path}", auth=self._auth, params=params, timeout=self._timeout
-            )
+            r = self._client.get(f"{self._base}{path}", auth=self._auth, params=params)
         except httpx.HTTPError as exc:
             raise JiraError(f"連不上 {self._base} —— 站台網址是不是打錯了？") from exc
         if r.status_code in (401, 403):
@@ -94,11 +100,10 @@ class HttpJiraClient:
         if not match:
             available = ", ".join(t["to"]["name"] for t in data.get("transitions", []))
             raise JiraError(f"{key} 沒有通往「{to_status}」的轉換。可用的：{available}")
-        r = httpx.post(
+        r = self._client.post(
             f"{self._base}/rest/api/3/issue/{key}/transitions",
             auth=self._auth,
             json={"transition": {"id": match[0]["id"]}},
-            timeout=self._timeout,
         )
         if r.status_code >= 400:
             raise JiraError(f"轉換 {key} 失敗：{r.status_code} {r.text[:200]}")

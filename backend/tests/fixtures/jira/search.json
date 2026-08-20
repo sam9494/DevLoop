@@ -1,0 +1,43 @@
+{
+  "isLast": true,
+  "issues": [
+    {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+      "id": "10024",
+      "self": "https://swallowhouse.atlassian.net/rest/api/3/issue/10024",
+      "key": "KAN-15",
+      "fields": {
+        "summary": "[Phase 0 / W1] 104 adapter：SourceAdapter 介面 + fixture 測試 + crawl_runs 落地",
+        "status": {
+          "self": "https://swallowhouse.atlassian.net/rest/api/3/status/10004",
+          "description": "",
+          "name": "待辦事項",
+          "id": "10004",
+          "statusCategory": {
+            "id": 2,
+            "key": "new",
+            "colorName": "blue-gray",
+            "name": "待辦事項"
+          }
+        },
+        "labels": ["ingestion", "phase-0", "week-1"],
+        "description": "W1 收尾卡 — 完成後「資料進得來」達標。"
+      }
+    },
+    {
+      "id": "10025",
+      "self": "https://swallowhouse.atlassian.net/rest/api/3/issue/10025",
+      "key": "KAN-16",
+      "fields": {
+        "summary": "[Phase 0 / W2] 打標模組：structured outputs + content_hash 快取",
+        "status": {
+          "name": "進行中",
+          "id": "10005",
+          "statusCategory": { "id": 4, "key": "indeterminate", "name": "進行中" }
+        },
+        "labels": [],
+        "description": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "expand": "transitions",
+  "transitions": [
+    {
+      "id": "11",
+      "name": "待辦事項",
+      "to": { "name": "待辦事項", "id": "10004",
+              "statusCategory": { "id": 2, "key": "new", "name": "待辦事項" } },
+      "hasScreen": false, "isGlobal": true, "isInitial": false, "isAvailable": true
+    },
+    {
+      "id": "21",
+      "name": "進行中",
+      "to": { "name": "進行中", "id": "10005",
+              "statusCategory": { "id": 4, "key": "indeterminate", "name": "進行中" } },
+      "hasScreen": false, "isGlobal": true, "isInitial": false, "isAvailable": true
+    },
+    {
+      "id": "41",
+      "name": "完成",
+      "to": { "name": "完成", "id": "10007",
+              "statusCategory": { "id": 3, "key": "done", "name": "完成" } },
+      "hasScreen": false, "isGlobal": true, "isInitial": false, "isAvailable": true
+    }
+  ]
+}

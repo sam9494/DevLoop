@@ -1,0 +1,16 @@
+{
+  "self": "https://swallowhouse.atlassian.net/rest/api/3/user?accountId=5d9b254c45fad00dc125f960",
+  "accountId": "5d9b254c45fad00dc125f960",
+  "accountType": "atlassian",
+  "emailAddress": "samchong9494@gmail.com",
+  "avatarUrls": {
+    "48x48": "https://secure.gravatar.com/avatar/6b409a45fc12d7948bdfc2846e627f63",
+    "24x24": "https://secure.gravatar.com/avatar/6b409a45fc12d7948bdfc2846e627f63",
+    "16x16": "https://secure.gravatar.com/avatar/6b409a45fc12d7948bdfc2846e627f63",
+    "32x32": "https://secure.gravatar.com/avatar/6b409a45fc12d7948bdfc2846e627f63"
+  },
+  "displayName": "sam chong",
+  "active": true,
+  "timeZone": "Asia/Taipei",
+  "locale": "zh-TW"
+}
