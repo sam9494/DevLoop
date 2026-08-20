@@ -11,7 +11,7 @@ from tests.conftest import needs_db
 
 
 def _queued(session, prompt: str = "x") -> Job:  # type: ignore[no-untyped-def]
-    card = Card(key="KAN-99", title="t")
+    card = Card(key="KAN-99", project="KAN", title="t")
     session.add(card)
     session.flush()
     return service.enqueue_generation(session, card, workspace=Path("/tmp"), permission_mode="plan")

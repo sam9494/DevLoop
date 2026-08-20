@@ -14,7 +14,9 @@ from devloop.jira.client import JiraClient
 
 def sync_cards(session: Session, client: JiraClient, project: str) -> list[Card]:
     remote = client.open_cards(project)
-    existing = {c.key: c for c in session.scalars(select(Card)).all()}
+    existing = {
+        c.key: c for c in session.scalars(select(Card).where(Card.project == project)).all()
+    }
     now = datetime.now(UTC)
 
     for item in remote:
@@ -22,6 +24,7 @@ def sync_cards(session: Session, client: JiraClient, project: str) -> list[Card]
         if card is None:
             card = Card(key=item.key)
             session.add(card)
+        card.project = project
         card.title = item.title
         card.jira_status = item.status
         card.url = item.url

@@ -49,6 +49,8 @@ def _ensure_test_database() -> bool:
 
     engine = sa.create_engine(_render(target))
     try:
+        # 每次重建：create_all 不會幫既有的表補欄位，schema 一改測試就會停在舊的
+        Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
     except Exception:
         return False

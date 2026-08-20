@@ -27,7 +27,8 @@ class Card(Base):
     __tablename__ = "cards"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid7)
-    key: Mapped[str] = mapped_column(unique=True)  # KAN-15
+    key: Mapped[str] = mapped_column(unique=True)  # DEV-8
+    project: Mapped[str] = mapped_column(index=True)  # 換專案時列表才不會混在一起
     title: Mapped[str]
     jira_status: Mapped[str | None]
     url: Mapped[str | None]

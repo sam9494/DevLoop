@@ -40,7 +40,7 @@ REPORT = {
 
 
 def _card(session) -> Card:  # type: ignore[no-untyped-def]
-    card = Card(key="KAN-15", title="104 adapter", description="接 104")
+    card = Card(key="KAN-15", project="KAN", title="104 adapter", description="接 104")
     session.add(card)
     session.flush()
     return card

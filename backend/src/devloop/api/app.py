@@ -176,9 +176,12 @@ class CardRow:
         return "產生中" if self.job_running else "尚未產生規格"
 
 
-def _card_rows(session: Session) -> list[CardRow]:
+def _card_rows(session: Session, project: str) -> list[CardRow]:
+    """只列目前設定的那個專案 —— 換專案時舊專案的卡不該混進來。"""
     rows = []
-    for card in session.scalars(select(Card).order_by(Card.key)).all():
+    for card in session.scalars(
+        select(Card).where(Card.project == project).order_by(Card.key)
+    ).all():
         report = service.latest_report(session, card)
         jobs = list(
             session.scalars(
@@ -207,7 +210,7 @@ def cards_page(
         request,
         "cards.html",
         {
-            "cards": _card_rows(session),
+            "cards": _card_rows(session, conn.jira_project),
             "connection": to_view(conn),
             "nav": "cards",
             "synced": synced or None,
