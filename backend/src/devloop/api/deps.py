@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from sqlalchemy.orm import Session
 
 from devloop.db.session import SessionLocal
+from devloop.graph.client import GraphStore
 from devloop.jira.client import JiraClient
 from devloop.runner.claude import LlmRunner
 
@@ -33,4 +34,9 @@ def get_jira_override() -> JiraClient | None:
 
 def get_runner() -> LlmRunner | None:
     """None 代表用真的 Claude Code CLI。測試覆寫成 FakeRunner。"""
+    return None
+
+
+def get_graph() -> GraphStore | None:
+    """None 代表用真的 Neo4j。測試覆寫成 FakeGraph。"""
     return None

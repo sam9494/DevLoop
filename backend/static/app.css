@@ -164,3 +164,25 @@ label.opt input { margin-top:6px; flex:0 0 auto; accent-color:var(--green); }
 .gate-bar button:disabled { opacity:.35; cursor:not-allowed; }
 body.has-gate { padding-bottom:120px; }
 .empty { text-align:center; color:var(--muted); padding:38px 0; font-size:.92rem; }
+
+/* ===== 要求修改 ===== */
+section.revise { border-left:4px solid var(--amber); }
+section.revise summary {
+  cursor:pointer; font-weight:700; font-size:.98rem; color:var(--amber);
+  list-style:none; display:flex; align-items:center; gap:8px;
+}
+section.revise summary::before { content:"▸"; transition:transform .15s; }
+section.revise details[open] summary::before { transform:rotate(90deg); }
+section.revise summary::-webkit-details-marker { display:none; }
+section.revise select {
+  width:100%; font:inherit; font-size:.93rem; border:1.5px solid var(--line);
+  border-radius:9px; padding:10px 12px; background:#fff;
+}
+section.revise textarea {
+  width:100%; font:inherit; font-size:.9rem; border:1.5px solid var(--line);
+  border-radius:9px; padding:10px 12px; background:#fff; resize:vertical;
+  font-family:inherit;
+}
+section.revise textarea:focus, section.revise select:focus {
+  outline:none; border-color:var(--amber);
+}

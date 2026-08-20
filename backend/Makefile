@@ -1,4 +1,4 @@
-.PHONY: lint format typecheck boundaries test ci dev up down migrate
+.PHONY: lint format typecheck boundaries test ci dev up down migrate rebuild-graph
 
 lint:
 	uv run ruff format --check .
@@ -30,3 +30,6 @@ down:
 
 migrate:
 	uv run alembic upgrade head
+
+rebuild-graph:
+	uv run devloop rebuild-graph

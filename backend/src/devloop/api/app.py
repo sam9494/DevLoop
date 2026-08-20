@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,13 +11,14 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from devloop.api.deps import get_jira_override, get_session, get_verifier
+from devloop.api.deps import get_graph, get_jira_override, get_session, get_verifier
 from devloop.api.render import to_html
 from devloop.core.config import get_settings
 from devloop.core.crypto import SecretKeyMissingError
 from devloop.core.logging import configure
 from devloop.db.models import Card, Connection, Job, Report, Section
 from devloop.db.session import SessionLocal
+from devloop.graph.client import GraphStore, Neo4jGraph
 from devloop.jira.client import JiraClient, JiraError
 from devloop.jira.connections import client_for, get_connection, save_connection, to_view
 from devloop.jira.sync import sync_cards
@@ -73,6 +74,22 @@ def get_jira(
 
 
 JiraDep = Annotated[JiraClient, Depends(get_jira)]
+
+
+def graph_store(
+    override: Annotated[GraphStore | None, Depends(get_graph)],
+) -> Iterator[GraphStore]:
+    if override is not None:
+        yield override
+        return
+    graph = Neo4jGraph.from_settings()
+    try:
+        yield graph
+    finally:
+        graph.close()
+
+
+GraphDep = Annotated[GraphStore, Depends(graph_store)]
 
 
 @app.get("/health")
@@ -347,7 +364,12 @@ async def card_answers(key: str, request: Request, session: SessionDep, conn: Co
 
 @app.post("/cards/{key}/freeze")
 async def card_freeze(  # type: ignore[no-untyped-def]
-    key: str, request: Request, session: SessionDep, conn: ConnDep, jira: JiraDep
+    key: str,
+    request: Request,
+    session: SessionDep,
+    conn: ConnDep,
+    jira: JiraDep,
+    graph: GraphDep,
 ):
     card = session.scalar(select(Card).where(Card.key == key))
     if card is None:
@@ -359,9 +381,15 @@ async def card_freeze(  # type: ignore[no-untyped-def]
     form = {k: str(v) for k, v in (await request.form()).items()}
     try:
         _apply_form(session, report, form)
-        service.freeze(session, report)
+        outcome = service.freeze(session, report, graph)
     except service.SpecError as exc:
         return RedirectResponse(f"/cards/{key}?message={exc}", status_code=303)
+
+    if outcome.graph_error:
+        # 圖是投影，同步失敗不影響決策 —— make rebuild-graph 補得回來
+        log_note = f"（圖沒同步到：{outcome.graph_error}，可用 rebuild-graph 補）"
+    else:
+        log_note = ""
 
     # 凍結成功才動 Jira —— 決策先落地，外部系統後動
     try:
@@ -369,9 +397,43 @@ async def card_freeze(  # type: ignore[no-untyped-def]
         card.jira_status = "進行中"
     except JiraError as exc:
         return RedirectResponse(
-            f"/cards/{key}?message=已凍結，但 Jira 沒動到：{exc}", status_code=303
+            f"/cards/{key}?message=已凍結，但 Jira 沒動到：{exc}{log_note}", status_code=303
         )
-    return RedirectResponse(f"/cards/{key}?message=已凍結，卡也移到進行中了", status_code=303)
+    return RedirectResponse(
+        f"/cards/{key}?message=已凍結，卡也移到進行中了{log_note}", status_code=303
+    )
+
+
+@app.post("/cards/{key}/revise")
+async def card_revise(  # type: ignore[no-untyped-def]
+    key: str, request: Request, session: SessionDep, conn: ConnDep
+):
+    """閘門的另一顆鈕：退回某一節，重產一版。已答過的題目會依 slug 帶到新版。"""
+    card = session.scalar(select(Card).where(Card.key == key))
+    if card is None:
+        raise HTTPException(status_code=404, detail=f"沒有 {key} 這張卡")
+    report = service.latest_report(session, card)
+    if report is None:
+        return RedirectResponse("/", status_code=303)
+
+    form = {k: str(v) for k, v in (await request.form()).items()}
+    try:
+        section_n = int(form.get("section_n") or 0)
+    except ValueError:
+        section_n = 0
+
+    try:
+        service.request_changes(
+            session,
+            report,
+            section_n=section_n,
+            reason=form.get("reason") or "",
+            workspace=settings.workspace_root,
+            permission_mode="acceptEdits",
+        )
+    except service.SpecError as exc:
+        return RedirectResponse(f"/cards/{key}?message={exc}", status_code=303)
+    return RedirectResponse("/?message=已要求修改，正在重產一版", status_code=303)
 
 
 @app.get("/cards/{key}/review.json", response_class=PlainTextResponse)

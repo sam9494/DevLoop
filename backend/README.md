@@ -28,6 +28,7 @@ Jira 憑證**不放在 .env** —— 開 <http://localhost:8100/settings> 填，
 
 ```bash
 make ci                   # ruff + mypy strict + import-linter + pytest
+make rebuild-graph        # 清空 Neo4j 並從 Postgres 的 edges 表重建
 ```
 
 ## 主流程
@@ -36,8 +37,10 @@ make ci                   # ruff + mypy strict + import-linter + pytest
 /            卡片列表 —— 從 Jira 同步、對某張卡按「產生規格」
              ↓ worker 在背景跑 claude -p，產出八節報告與題目
 /cards/{key} 規格頁 —— 讀報告、答題（題目穿插在相關段落底下）
-             ↓ 必答題答完才解鎖
-             凍結 → 版本鎖 v1.0、答案萃成決策寫進圖、Jira 卡移到「進行中」
+             ↓ 兩顆鈕：
+             要求修改 → 退回某一節重產，已答過的題目依 slug 帶到新版
+             凍結     → 版本鎖 v1.0、答案萃成決策、寫進 edges 與 Neo4j、
+                        Jira 卡移到「進行中」
 /cards/{key}/review.json   決策紀錄，格式與 docs/decisions/*.json 一致
 ```
 

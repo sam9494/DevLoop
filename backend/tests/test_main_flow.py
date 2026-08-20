@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 
 from devloop.api import app as app_module
 from devloop.api.app import app
-from devloop.api.deps import get_jira_override, get_session, get_verifier
+from devloop.api.deps import get_graph, get_jira_override, get_session, get_verifier
 from devloop.db.models import Card
+from devloop.graph.client import FakeGraph
 from devloop.jira.client import Card as RemoteCard
 from devloop.jira.client import FakeJira
 from devloop.jira.connections import save_connection
@@ -62,6 +63,7 @@ def client(session: Session, jira: FakeJira) -> Iterator[TestClient]:
     app.dependency_overrides[get_session] = lambda: session
     app.dependency_overrides[get_verifier] = lambda: FakeJira()
     app.dependency_overrides[get_jira_override] = lambda: jira
+    app.dependency_overrides[get_graph] = FakeGraph
     yield TestClient(app, follow_redirects=False)
     app.dependency_overrides.clear()
 
@@ -238,6 +240,7 @@ def test_jira_failure_after_freezing_does_not_undo_the_freeze(
     broken = Broken([REMOTE])
     app.dependency_overrides[get_session] = lambda: session
     app.dependency_overrides[get_jira_override] = lambda: broken
+    app.dependency_overrides[get_graph] = FakeGraph
     try:
         c = TestClient(app, follow_redirects=False)
         c.post("/cards/sync")
@@ -275,3 +278,57 @@ def test_review_json_is_downloadable_with_the_card_in_the_filename(
 def test_the_owner_key_is_still_hardcoded(session: Session) -> None:
     # 這條是提醒：加登入時要改的就是這裡（DEBT.md 有登記）
     assert app_module.OWNER_KEY == "sam"
+
+
+# ---------- 要求修改（閘門的第二顆鈕） ----------
+
+
+@needs_db
+def test_the_report_page_offers_the_send_back_button(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+
+    body = client.get("/cards/KAN-15").text
+    assert "要求修改" in body
+    assert 'formaction="/cards/KAN-15/revise"' in body
+    assert "哪一節" in body
+
+
+@needs_db
+def test_sending_back_queues_a_revision(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+
+    r = client.post(
+        "/cards/KAN-15/revise",
+        data={"section_n": "3", "reason": "沒寫出不做的代價"},
+    )
+
+    assert r.status_code == 303
+    assert "已要求修改" in redirect_message(r)
+
+    card = session.query(Card).filter_by(key="KAN-15").one()
+    report = service.latest_report(session, card)
+    assert report is not None and report.state == "changes_requested"
+
+
+@needs_db
+def test_sending_back_without_a_reason_is_refused(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+
+    r = client.post("/cards/KAN-15/revise", data={"section_n": "3", "reason": ""})
+    assert "哪裡要改" in redirect_message(r)
+
+
+@needs_db
+def test_a_frozen_report_has_no_send_back_button(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+    client.post(
+        "/cards/KAN-15/freeze",
+        data={"choice__source-choice": "a3", "value__tenacity-dep": "yes"},
+    )
+
+    body = client.get("/cards/KAN-15").text
+    assert 'formaction="/cards/KAN-15/revise"' not in body

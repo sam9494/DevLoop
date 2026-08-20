@@ -80,6 +80,35 @@
 {% endfor %}
 
 {% if not frozen %}
+<section class="revise">
+  <details>
+    <summary>要求修改 —— 退回某一節重寫</summary>
+    <p class="lede" style="margin-top:10px">
+      報告哪一節寫得不對或不夠，退回去重產一版。<b>已經答過的題目會依 slug 帶到新版</b>，
+      不用重答；只有被推翻或新增的題目要處理。
+    </p>
+    <div class="field">
+      <label for="section_n">哪一節</label>
+      <select id="section_n" name="section_n">
+        {% for section in sections %}
+        <option value="{{ section.n }}" {% if section.n == 3 %}selected{% endif %}>
+          {{ '%02d' % section.n }} · {{ section.title }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="reason">哪裡要改（必填）</label>
+      <span class="hint">寫清楚一點 —— 這段話會直接變成重產時給 Claude 的指示</span>
+      <textarea id="reason" name="reason" rows="3"
+                placeholder="例：第 3 節只列了兩個選項，但沒寫出「不做」的代價"></textarea>
+    </div>
+    <button type="submit" formaction="/cards/{{ card.key }}/revise" class="ghost">
+      送出要求修改
+    </button>
+  </details>
+</section>
+
 <div class="gate-bar">
   <div class="gate-inner">
     <span class="prog">已答 <b>{{ answered_count }}</b> / {{ required_count }} 題必答</span>

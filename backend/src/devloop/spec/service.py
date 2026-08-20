@@ -10,6 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from devloop.db.models import Answer, Card, Decision, Edge, Job, Question, Report, Section
+from devloop.graph.client import Edge as GraphEdge
+from devloop.graph.client import GraphStore, Node
 from devloop.runner.claude import LlmRunner, extract_json_object
 from devloop.spec.prompt import SECTIONS, build_prompt
 
@@ -23,11 +25,14 @@ class FreezeOutcome:
     report: Report
     decisions: list[Decision]
     edges: list[Edge]
+    graph_error: str | None = None
 
 
 def latest_report(session: Session, card: Card) -> Report | None:
+    # 用 id 排序而不是 created_at：Postgres 的 now() 是「交易起始時間」，
+    # 同一交易裡建的兩份報告時間戳會一模一樣。uuid7 是時間有序的，排序才確定。
     return session.scalar(
-        select(Report).where(Report.card_id == card.id).order_by(Report.created_at.desc())
+        select(Report).where(Report.card_id == card.id).order_by(Report.id.desc())
     )
 
 
@@ -66,6 +71,43 @@ def enqueue_generation(
     session.add(job)
     session.flush()
     return job
+
+
+def request_changes(
+    session: Session,
+    report: Report,
+    *,
+    section_n: int,
+    reason: str,
+    workspace: Path,
+    permission_mode: str,
+) -> Job:
+    """要求修改：把這一版標成 changes_requested，排一個改版的 job。
+
+    閘門的定義是 approve / 要求修改兩顆鈕（PRD §5 P0）。只有 approve 的話，
+    「要求修改比例 20–40%」這個成功指標永遠量不到。
+    """
+    if report.state == "frozen":
+        raise SpecError("已經凍結的版本不能再要求修改")
+    if not reason.strip():
+        raise SpecError("要求修改必須寫下哪裡要改")
+
+    card = session.get(Card, report.card_id)
+    if card is None:
+        raise SpecError("報告沒有對應的卡")
+
+    report.state = "changes_requested"
+    report.verdict_note = reason.strip()
+    session.flush()
+
+    return enqueue_generation(
+        session,
+        card,
+        workspace=workspace,
+        permission_mode=permission_mode,
+        revision_section=section_n,
+        revision_reason=reason.strip(),
+    )
 
 
 def run_job(session: Session, job: Job, runner: LlmRunner, timeout_s: int) -> Job:
@@ -130,6 +172,8 @@ def _persist_report(session: Session, card: Card, payload: dict[str, Any]) -> Re
         by_n[n] = section
     session.flush()
 
+    previous = _previous_report(session, card, report)
+
     for ordinal, raw in enumerate(payload.get("questions", [])):
         section_n = raw.get("section_n")
         session.add(
@@ -145,7 +189,39 @@ def _persist_report(session: Session, card: Card, payload: dict[str, Any]) -> Re
             )
         )
     session.flush()
+
+    if previous is not None:
+        _carry_over_answers(session, previous, report)
     return report
+
+
+def _previous_report(session: Session, card: Card, current: Report) -> Report | None:
+    rows = list(
+        session.scalars(
+            select(Report).where(Report.card_id == card.id).order_by(Report.id.desc())
+        ).all()
+    )
+    return next((r for r in rows if r.id != current.id), None)
+
+
+def _carry_over_answers(session: Session, previous: Report, current: Report) -> None:
+    """slug 跨版本穩定的用途就在這裡 —— 同一題沿用同一個 slug，答案才對得回來。"""
+    old = answers_of(session, previous)
+    for question in questions_of(session, current):
+        source = old.get(question.slug)
+        if source is None:
+            continue
+        session.add(
+            Answer(
+                question_id=question.id,
+                choice=source.choice,
+                value=source.value,
+                text=source.text,
+                none_of_above=source.none_of_above,
+                note=source.note,
+            )
+        )
+    session.flush()
 
 
 def questions_of(session: Session, report: Report) -> list[Question]:
@@ -227,7 +303,7 @@ def _decision_text(question: Question, answer: Answer) -> str:
     return f"{question.prompt} → {label}"
 
 
-def freeze(session: Session, report: Report) -> FreezeOutcome:
+def freeze(session: Session, report: Report, graph: GraphStore | None = None) -> FreezeOutcome:
     """凍結：鎖版本、把答案萃成決策、寫進圖。沒答完不讓過。"""
     if report.state == "frozen":
         raise SpecError("這一版已經凍結過了")
@@ -267,7 +343,25 @@ def freeze(session: Session, report: Report) -> FreezeOutcome:
     report.version = "v1.0"
     report.frozen_at = datetime.now(UTC)
     session.flush()
-    return FreezeOutcome(report=report, decisions=decisions, edges=edges)
+
+    # 圖是 edges 表的投影 —— 同步失敗不回捲凍結，之後 rebuild-graph 補得回來
+    graph_error: str | None = None
+    if graph is not None:
+        try:
+            sync_to_graph(graph, card, decisions)
+        except Exception as exc:
+            graph_error = str(exc)
+
+    return FreezeOutcome(report=report, decisions=decisions, edges=edges, graph_error=graph_error)
+
+
+def sync_to_graph(graph: GraphStore, card: Card, decisions: list[Decision]) -> None:
+    graph.upsert_node(Node(id=str(card.id), kind="Card", label=card.key, summary=card.title))
+    for decision in decisions:
+        graph.upsert_node(
+            Node(id=str(decision.id), kind="Decision", label=decision.slug, summary=decision.text)
+        )
+        graph.upsert_edge(GraphEdge(from_id=str(card.id), to_id=str(decision.id), kind="PRODUCED"))
 
 
 def report_as_json(session: Session, report: Report) -> str:

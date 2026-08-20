@@ -29,6 +29,9 @@ dev = [
     "import-linter>=2.1",
 ]
 
+[project.scripts]
+devloop = "devloop.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
