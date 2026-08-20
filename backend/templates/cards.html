@@ -13,6 +13,7 @@
     <form method="post" action="/cards/sync">
       <button type="submit">從 Jira 重新同步</button>
     </form>
+    <span class="budget {{ 'over' if budget.exhausted else '' }}">{{ budget.summary }}</span>
     {% if synced %}<span class="note">剛剛同步了 {{ synced }} 張。</span>{% endif %}
     {% if error %}<span class="note" style="color:var(--red)">{{ error }}</span>{% endif %}
   </div>
@@ -38,9 +39,13 @@
         <a href="/cards/{{ row.card.key }}"><button type="button">讀報告</button></a>
       {% elif row.job_running %}
         <span class="note">產生中…（重新整理看進度）</span>
+        <form method="post" action="/jobs/{{ row.running_job_id }}/cancel">
+          <button type="submit" class="ghost">中止</button>
+        </form>
       {% else %}
         <form method="post" action="/cards/{{ row.card.key }}/generate">
-          <button type="submit">產生規格</button>
+          <button type="submit" {{ 'disabled' if budget.exhausted }}
+                  title="{{ '今日成本已達上限' if budget.exhausted else '' }}">產生規格</button>
         </form>
       {% endif %}
     </div>

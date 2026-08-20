@@ -1,6 +1,8 @@
+import uuid
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -22,8 +24,9 @@ from devloop.graph.client import GraphStore, Neo4jGraph
 from devloop.jira.client import JiraClient, JiraError
 from devloop.jira.connections import client_for, get_connection, save_connection, to_view
 from devloop.jira.sync import sync_cards
-from devloop.runner.claude import ClaudeCliRunner
+from devloop.runner.claude import ClaudeCliRunner, registry
 from devloop.runner.worker import Worker
+from devloop.spec import budget as budget_service
 from devloop.spec import service
 
 settings = get_settings()
@@ -126,6 +129,7 @@ def settings_save(
     email: Annotated[str, Form()],
     project: Annotated[str, Form()],
     workspace: Annotated[str, Form()],
+    daily_limit: Annotated[float, Form()] = 10.0,
     token: Annotated[str, Form()] = "",
 ) -> HTMLResponse:
     try:
@@ -136,6 +140,7 @@ def settings_save(
             email=email.strip(),
             project=project.strip().upper(),
             workspace=workspace.strip(),
+            daily_limit_usd=daily_limit,
             token=token.strip() or None,
             verifier=verifier,
         )
@@ -160,6 +165,7 @@ class CardRow:
     report: Report | None
     job_running: bool
     job_error: str | None
+    running_job_id: uuid.UUID | None = None
 
     @property
     def gate_class(self) -> str:
@@ -197,7 +203,10 @@ def _card_rows(session: Session, project: str) -> list[CardRow]:
                 report=report,
                 job_running=last is not None and last.status in ("queued", "running"),
                 job_error=last.error
-                if last is not None and last.status in ("failed", "timeout")
+                if last is not None and last.status in ("failed", "timeout", "cancelled")
+                else None,
+                running_job_id=last.id
+                if last is not None and last.status in ("queued", "running")
                 else None,
             )
         )
@@ -214,6 +223,7 @@ def cards_page(
         {
             "cards": _card_rows(session, conn.jira_project),
             "connection": to_view(conn),
+            "budget": budget_service.budget_for(session, float(conn.daily_cost_limit_usd)),
             "nav": "cards",
             "synced": synced or None,
             "error": error or None,
@@ -238,6 +248,13 @@ def card_generate(key: str, session: SessionDep, conn: ConnDep) -> RedirectRespo
     view = to_view(conn)
     if view.workspace.error:
         return RedirectResponse(f"/?error={view.workspace.error}", status_code=303)
+
+    budget = budget_service.budget_for(session, float(conn.daily_cost_limit_usd))
+    if budget.exhausted:
+        return RedirectResponse(
+            f"/?error=今日成本已達上限（{budget.summary}）—— 到設定頁調高才能繼續",
+            status_code=303,
+        )
 
     service.enqueue_generation(
         session,
@@ -445,6 +462,24 @@ async def card_revise(  # type: ignore[no-untyped-def]
     except service.SpecError as exc:
         return RedirectResponse(f"/cards/{key}?message={exc}", status_code=303)
     return RedirectResponse("/?message=已要求修改，正在重產一版", status_code=303)
+
+
+@app.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: uuid.UUID, session: SessionDep, conn: ConnDep) -> RedirectResponse:
+    """真的把子行程殺掉 —— 一次跑七分鐘花 US$1.68，只改狀態不算中止。"""
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="沒有這個工作")
+    if job.status not in ("queued", "running"):
+        return RedirectResponse("/?error=這個工作已經結束了", status_code=303)
+
+    killed = registry.cancel(job_id)
+    if job.status == "queued" or not killed:
+        # 還沒開始跑，或子行程已經不在了 —— 直接收掉
+        job.status = "cancelled"
+        job.error = "你按了中止"
+        job.finished_at = datetime.now(UTC)
+    return RedirectResponse("/?message=已中止", status_code=303)
 
 
 @app.get("/cards/{key}/review.json", response_class=PlainTextResponse)

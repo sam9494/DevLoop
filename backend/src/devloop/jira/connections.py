@@ -62,6 +62,7 @@ class ConnectionView:
     jira_email: str
     jira_project: str
     workspace: WorkspaceStatus
+    daily_cost_limit_usd: float
     token_masked: str
     display_name: str | None
     verified_at: datetime | None
@@ -87,6 +88,7 @@ def to_view(conn: Connection) -> ConnectionView:
         jira_email=conn.jira_email,
         jira_project=conn.jira_project,
         workspace=inspect_workspace(conn.workspace_root),
+        daily_cost_limit_usd=float(conn.daily_cost_limit_usd or 0),
         token_masked=mask(decrypt(conn.jira_token_encrypted)),
         display_name=conn.display_name,
         verified_at=conn.verified_at,
@@ -107,6 +109,7 @@ def save_connection(
     project: str,
     token: str | None,
     workspace: str = "",
+    daily_limit_usd: float = 10.0,
     verifier: JiraClient | None = None,
 ) -> ConnectionView:
     """存檔並立刻驗證。token 傳 None 代表「沿用既有的，我沒有要換」。
@@ -124,6 +127,7 @@ def save_connection(
             jira_email=email,
             jira_project=project,
             workspace_root=workspace,
+            daily_cost_limit_usd=daily_limit_usd,
             jira_token_encrypted=encrypt(token),
         )
         session.add(conn)
@@ -132,6 +136,7 @@ def save_connection(
         conn.jira_email = email
         conn.jira_project = project
         conn.workspace_root = workspace
+        conn.daily_cost_limit_usd = daily_limit_usd
         if token:
             conn.jira_token_encrypted = encrypt(token)
 

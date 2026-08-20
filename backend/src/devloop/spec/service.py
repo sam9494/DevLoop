@@ -116,7 +116,7 @@ def run_job(session: Session, job: Job, runner: LlmRunner, timeout_s: int) -> Jo
     job.started_at = datetime.now(UTC)
     session.flush()
 
-    outcome = runner.run(job.prompt, Path(job.cwd), job.permission_mode, timeout_s)
+    outcome = runner.run(job.prompt, Path(job.cwd), job.permission_mode, timeout_s, job_id=job.id)
 
     job.claude_session_id = outcome.session_id
     job.cost_usd = outcome.cost_usd
@@ -126,7 +126,12 @@ def run_job(session: Session, job: Job, runner: LlmRunner, timeout_s: int) -> Jo
     job.finished_at = datetime.now(UTC)
 
     if not outcome.ok:
-        job.status = "timeout" if "超過" in (outcome.error or "") else "failed"
+        if outcome.cancelled:
+            job.status = "cancelled"
+        elif "超過" in (outcome.error or ""):
+            job.status = "timeout"
+        else:
+            job.status = "failed"
         job.error = outcome.error
         session.flush()
         return job

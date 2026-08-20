@@ -367,3 +367,83 @@ def test_a_frozen_page_tells_the_script_to_stay_out(client: TestClient, session:
 
     body = client.get("/cards/KAN-15").text
     assert 'data-frozen="1"' in body
+
+
+# ---------- 成本煞車 ----------
+
+
+@needs_db
+def test_the_card_list_shows_what_today_has_cost(client: TestClient) -> None:
+    client.post("/cards/sync")
+    body = client.get("/").text
+    assert "今日已用 US$0.00 / 上限 US$10.00" in body
+
+
+@needs_db
+def test_generating_is_blocked_once_the_daily_limit_is_reached(
+    client: TestClient, session: Session
+) -> None:
+    from devloop.db.models import Job
+
+    client.post("/cards/sync")
+    card = session.query(Card).filter_by(key="KAN-15").one()
+    session.add(
+        Job(
+            card_id=card.id,
+            kind="generate_spec",
+            status="succeeded",
+            prompt="p",
+            cwd="/tmp",
+            permission_mode="plan",
+            cost_usd=10.0,
+        )
+    )
+    session.flush()
+
+    r = client.post("/cards/KAN-15/generate")
+    assert "今日成本已達上限" in redirect_message(r)
+
+    # 沒有排出新的工作
+    assert session.query(Job).filter_by(status="queued").count() == 0
+    # 而且按鈕是停用的
+    assert "今日成本已達上限" in client.get("/").text
+
+
+@needs_db
+def test_a_running_job_can_be_cancelled_from_the_list(client: TestClient, session: Session) -> None:
+    from devloop.db.models import Job
+
+    client.post("/cards/sync")
+    client.post("/cards/KAN-15/generate")
+    job = session.query(Job).filter_by(status="queued").one()
+
+    assert f"/jobs/{job.id}/cancel" in client.get("/").text
+
+    r = client.post(f"/jobs/{job.id}/cancel")
+    assert "已中止" in redirect_message(r)
+
+    # 路由改的是同一個 session 上的物件；正式環境由 get_session 在請求結束時 commit
+    session.flush()
+    assert job.status == "cancelled"
+    assert job.finished_at is not None
+
+
+@needs_db
+def test_cancelling_a_finished_job_says_so(client: TestClient, session: Session) -> None:
+    from devloop.db.models import Job
+
+    client.post("/cards/sync")
+    card = session.query(Card).filter_by(key="KAN-15").one()
+    done = Job(
+        card_id=card.id,
+        kind="generate_spec",
+        status="succeeded",
+        prompt="p",
+        cwd="/tmp",
+        permission_mode="plan",
+    )
+    session.add(done)
+    session.flush()
+
+    r = client.post(f"/jobs/{done.id}/cancel")
+    assert "已經結束" in redirect_message(r)

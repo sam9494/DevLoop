@@ -196,6 +196,8 @@ class Connection(Base):
     jira_project: Mapped[str]
     # claude 子行程的 cwd —— 跟專案代號成對，換專案時一起改，不用編輯 .env
     workspace_root: Mapped[str] = mapped_column(default="")
+    # 每日成本上限（美金）。一次規格產生實測 US$1.68，沒有煞車很容易失控
+    daily_cost_limit_usd: Mapped[float] = mapped_column(sa.Numeric(8, 2), default=10)
     jira_account_id: Mapped[str | None]  # 驗證成功時回填，證明憑證真的能用
     display_name: Mapped[str | None]
     verified_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
