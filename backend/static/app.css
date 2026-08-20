@@ -207,3 +207,25 @@ section.revise textarea:focus, section.revise select:focus {
 .kg-hit .hit-src { font-family:var(--mono); font-size:.72rem; color:var(--muted); margin-left:6px; }
 .kg-hit .hit-why { font-size:.72rem; color:var(--muted); margin-left:6px; }
 .kg-hit .hit-text { font-size:.86rem; margin-top:2px; line-height:1.6; }
+
+/* ===== 決策匯總 ===== */
+.metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+.metric { background:#f8fafc; border:1px solid var(--line); border-radius:11px; padding:13px 15px; }
+.metric.warn { border-color:var(--amber); background:var(--amber-soft); }
+.m-num { font-size:1.5rem; font-weight:800; letter-spacing:-.02em; line-height:1.2; }
+.m-lab { font-size:.82rem; color:var(--muted); margin-top:1px; }
+.m-note { font-size:.72rem; color:var(--muted); margin-top:5px; line-height:1.45; }
+
+.decision { border:1px solid var(--line); border-left:4px solid var(--blue);
+            border-radius:11px; padding:13px 16px; margin-bottom:11px; }
+.decision.none { border-left-color:var(--amber); background:#fffdf9; }
+.d-head { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:5px; }
+.d-slug { font-family:var(--mono); font-size:.72rem; font-weight:800; color:#fff;
+          background:var(--ink); border-radius:5px; padding:1px 8px; }
+.decision.none .d-slug { background:var(--amber); }
+.d-when { font-family:var(--mono); font-size:.72rem; color:var(--muted); }
+.d-q { font-size:.88rem; color:var(--muted); }
+.d-a { font-size:.98rem; font-weight:700; margin-top:3px; }
+.d-flag { color:var(--amber); font-size:.8rem; margin-right:5px; }
+.d-note { font-size:.85rem; color:var(--muted); margin-top:5px;
+          border-left:3px solid var(--line); padding-left:10px; }

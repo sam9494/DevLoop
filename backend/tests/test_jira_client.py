@@ -166,3 +166,78 @@ def test_a_missing_issue_says_the_key_or_site_may_be_wrong() -> None:
 
     with pytest.raises(JiraError, match="站台網址或專案代號"):
         client_with(handler).transition("KAN-999", "進行中")
+
+
+# ---------- ADF ----------
+
+
+def test_the_card_description_actually_arrives() -> None:
+    """真跑一次才發現的 bug：JQL 有要 description，組 Card 時卻漏掉了。
+
+    後果是每一份規格報告都在看不到卡片內容的情況下產出 —— DEV-1 的報告
+    第一句話就是「DEV-1 是空卡」，其實只是沒送過去。
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return ok(load("search"))
+
+    first = client_with(handler).open_cards("KAN")[0]
+
+    assert "W1 收尾卡" in first.description
+    assert "資料進得來" in first.description
+
+
+def test_adf_is_flattened_into_readable_text() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return ok(load("search"))
+
+    text = client_with(handler).open_cards("KAN")[0].description
+
+    assert "驗收條件" in text  # heading
+    assert "- SourceAdapter Protocol" in text  # bullet
+    assert "def search(query): ..." in text  # code block
+
+
+def test_an_unknown_adf_node_does_not_swallow_its_children() -> None:
+    """最容易犯的錯：遇到沒見過的節點種類就整段丟掉。"""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return ok(load("search"))
+
+    text = client_with(handler).open_cards("KAN")[0].description
+    assert "這段藏在展開區塊裡，不能被丟掉。" in text
+
+
+def test_a_card_without_a_description_is_empty_not_broken() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return ok(load("search"))
+
+    assert client_with(handler).open_cards("KAN")[1].description == ""
+
+
+def test_a_plain_string_description_still_works() -> None:
+    from devloop.jira.client import adf_to_text
+
+    assert adf_to_text("已經是字串了") == "已經是字串了"
+    assert adf_to_text(None) == ""
+
+
+def test_hard_breaks_and_mentions_survive() -> None:
+    from devloop.jira.client import adf_to_text
+
+    doc = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "text", "text": "第一行"},
+                    {"type": "hardBreak"},
+                    {"type": "text", "text": "第二行 "},
+                    {"type": "mention", "attrs": {"text": "@sam"}},
+                ],
+            }
+        ],
+    }
+    text = adf_to_text(doc)
+    assert "第一行\n第二行 @sam" in text

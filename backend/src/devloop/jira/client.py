@@ -28,6 +28,67 @@ class Card:
     description: str = ""
 
 
+# ADF 裡「一個區塊結束」的節點。其餘節點一律往下遞迴，不認得的也照樣走 ——
+# 遇到沒見過的節點就整段丟掉，是這個轉換最容易犯的錯。
+_ADF_BLOCKS = {
+    "paragraph",
+    "heading",
+    "listItem",
+    "codeBlock",
+    "blockquote",
+    "rule",
+    "panel",
+    "tableRow",
+    "mediaSingle",
+}
+
+
+def adf_to_text(node: Any) -> str:
+    """Jira v3 的 description 是 ADF 巢狀文件，不是字串。
+
+    只要能讀就好，不追求還原格式：抽出所有 text、在區塊邊界斷行、
+    清單前面加一個 -。不認得的節點種類**繼續往下遞迴**，不整段丟掉。
+    """
+    if node is None:
+        return ""
+    if isinstance(node, str):
+        return node
+
+    out: list[str] = []
+
+    def walk(item: Any, in_list: bool = False) -> None:
+        if isinstance(item, list):
+            for child in item:
+                walk(child, in_list)
+            return
+        if not isinstance(item, dict):
+            return
+
+        kind = item.get("type")
+        if kind == "text":
+            out.append(str(item.get("text") or ""))
+            return
+        if kind == "hardBreak":
+            out.append("\n")
+            return
+        if kind == "mention":
+            out.append(str((item.get("attrs") or {}).get("text") or ""))
+            return
+        if kind == "listItem":
+            out.append("\n- ")
+
+        walk(item.get("content"), in_list or kind in ("bulletList", "orderedList"))
+
+        if kind in _ADF_BLOCKS and kind != "listItem":
+            out.append("\n")
+
+    walk(node.get("content") if isinstance(node, dict) and "content" in node else node)
+    text = "".join(out)
+    while "\n\n\n" in text:
+        text = text.replace("\n\n\n", "\n\n")
+    return text.strip()
+
+
 class JiraError(RuntimeError):
     """憑證錯、站台錯、專案不存在 —— 一律走這裡，訊息要能直接顯示給使用者。"""
 
@@ -90,6 +151,7 @@ class HttpJiraClient:
                     status=(f.get("status") or {}).get("name", ""),
                     url=f"{self._base}/browse/{issue['key']}",
                     labels=list(f.get("labels") or []),
+                    description=adf_to_text(f.get("description")),
                 )
             )
         return cards

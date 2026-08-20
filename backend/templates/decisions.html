@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}DevLoop · 決策紀錄{% endblock %}
+{% block wrapclass %}wide{% endblock %}
+{% block content %}
+{% set m = summary.metrics %}
+
+<header class="card-head">
+  <h1>{{ summary.project }} 做過的技術決策</h1>
+  <div class="sub">
+    每一條都來自一次凍結的閘門。這頁就是 ADR 的來源，也是面試被問「你怎麼做技術選型」時的素材。
+    <a href="/decisions.md">下載 Markdown</a>
+  </div>
+</header>
+
+<section>
+  <h2>閘門指標</h2>
+  <div class="lede">這些數字同時在監督兩邊 —— 你有沒有認真審，以及報告品質穩不穩。</div>
+  <div class="metrics">
+    <div class="metric">
+      <div class="m-num">{{ m.gated_cards }}</div>
+      <div class="m-lab">張卡過閘</div>
+    </div>
+    <div class="metric">
+      <div class="m-num">{{ m.decisions }}</div>
+      <div class="m-lab">個決策</div>
+    </div>
+    <div class="metric {{ 'warn' if m.revise_rate is not none and (m.revise_rate < 0.2 or m.revise_rate > 0.4) }}">
+      <div class="m-num">{{ '{:.0%}'.format(m.revise_rate) if m.revise_rate is not none else '—' }}</div>
+      <div class="m-lab">要求修改比例</div>
+      <div class="m-note">{{ m.revise_verdict }}</div>
+    </div>
+    <div class="metric {{ 'warn' if m.none_of_above_rate is not none and m.none_of_above_rate > 0.3 }}">
+      <div class="m-num">{{ '{:.0%}'.format(m.none_of_above_rate) if m.none_of_above_rate is not none else '—' }}</div>
+      <div class="m-lab">「以上皆非」比例</div>
+      <div class="m-note">偏高代表選項沒涵蓋到你要的</div>
+    </div>
+    <div class="metric">
+      <div class="m-num">{{ '{:.0f}'.format(m.median_elapsed_minutes) if m.median_elapsed_minutes is not none else '—' }}</div>
+      <div class="m-lab">分鐘（產出→凍結）</div>
+      <div class="m-note">牆上時鐘，含你沒在看的時間</div>
+    </div>
+    <div class="metric {{ 'warn' if m.open_risks }}">
+      <div class="m-num">{{ m.open_risks }}</div>
+      <div class="m-lab">條未解風險</div>
+      <div class="m-note">開新卡時會被撈出來</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>決策</h2>
+  {% if not summary.rows %}
+    <div class="empty">
+      還沒有任何已凍結的決策。<a href="/">去卡片列表</a>產一份規格、答完題、按凍結，
+      決定就會出現在這裡。
+    </div>
+  {% endif %}
+
+  {% for row in summary.rows %}
+  <div class="decision {{ 'none' if row.none_of_above }}">
+    <div class="d-head">
+      <span class="d-slug">{{ row.slug }}</span>
+      <span class="lb">{{ row.card_key }}</span>
+      <span class="spacer" style="flex:1"></span>
+      <span class="d-when">{{ row.decided_at.astimezone().strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+    <div class="d-q">{{ row.question }}</div>
+    <div class="d-a">
+      {% if row.none_of_above %}<span class="d-flag">⚠️ 以上皆非</span>{% endif %}
+      {{ row.choice_label }}
+    </div>
+    {% if row.note %}<div class="d-note">{{ row.note }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% endblock %}

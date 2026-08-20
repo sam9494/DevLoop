@@ -483,3 +483,53 @@ def test_the_list_shows_what_the_knowledge_base_will_feed_claude(
 def test_no_hits_means_no_panel(client: TestClient) -> None:
     client.post("/cards/sync")
     assert "知識庫命中" not in client.get("/").text
+
+
+# ---------- 決策匯總頁 ----------
+
+
+@needs_db
+def test_the_decisions_page_is_reachable_and_honest_when_empty(client: TestClient) -> None:
+    body = client.get("/decisions").text
+    assert "還沒有任何已凍結的決策" in body
+    assert "牆上時鐘，含你沒在看的時間" in body  # 不假裝量得到專注時間
+
+
+@needs_db
+def test_a_frozen_card_shows_up_on_the_decisions_page(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+    client.post(
+        "/cards/KAN-15/freeze",
+        data={
+            "choice__source-choice": "none",
+            "note__source-choice": "我要先接 104",
+            "value__tenacity-dep": "yes",
+        },
+    )
+
+    body = client.get("/decisions").text
+    assert "source-choice" in body
+    assert "以上皆非" in body
+    assert "我要先接 104" in body
+    assert "橡皮圖章" in body  # 一張卡零退回 → 提醒可能在橡皮圖章
+
+
+@needs_db
+def test_the_markdown_export_is_downloadable(client: TestClient, session: Session) -> None:
+    client.post("/cards/sync")
+    _generate_for(session)
+    client.post(
+        "/cards/KAN-15/freeze",
+        data={"choice__source-choice": "a3", "value__tenacity-dep": "yes"},
+    )
+
+    r = client.get("/decisions.md")
+    assert "KAN-decisions.md" in r.headers["content-disposition"]
+    assert r.text.startswith("# KAN 的技術決策紀錄")
+    assert "### source-choice" in r.text
+
+
+@needs_db
+def test_the_nav_links_to_it(client: TestClient) -> None:
+    assert '<a href="/decisions"' in client.get("/").text

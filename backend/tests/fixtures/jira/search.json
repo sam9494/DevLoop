@@ -20,8 +20,100 @@
             "name": "待辦事項"
           }
         },
-        "labels": ["ingestion", "phase-0", "week-1"],
-        "description": "W1 收尾卡 — 完成後「資料進得來」達標。"
+        "labels": [
+          "ingestion",
+          "phase-0",
+          "week-1"
+        ],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "W1 收尾卡 — 完成後「資料進得來」達標。"
+                }
+              ]
+            },
+            {
+              "type": "heading",
+              "attrs": {
+                "level": 2
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "驗收條件"
+                }
+              ]
+            },
+            {
+              "type": "bulletList",
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "SourceAdapter Protocol"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [
+                    {
+                      "type": "paragraph",
+                      "content": [
+                        {
+                          "type": "text",
+                          "text": "真實抓取 ≥200 筆入庫"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "codeBlock",
+              "attrs": {
+                "language": "python"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "def search(query): ..."
+                }
+              ]
+            },
+            {
+              "type": "expand",
+              "attrs": {
+                "title": "備註"
+              },
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "這段藏在展開區塊裡，不能被丟掉。"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
       }
     },
     {
@@ -33,7 +125,11 @@
         "status": {
           "name": "進行中",
           "id": "10005",
-          "statusCategory": { "id": 4, "key": "indeterminate", "name": "進行中" }
+          "statusCategory": {
+            "id": 4,
+            "key": "indeterminate",
+            "name": "進行中"
+          }
         },
         "labels": [],
         "description": null

@@ -27,6 +27,7 @@ from devloop.jira.sync import sync_cards
 from devloop.runner.claude import ClaudeCliRunner, registry
 from devloop.runner.worker import Worker
 from devloop.spec import knowledge, service
+from devloop.spec import summary as summary_service
 from devloop.spec import usage as usage_service
 
 settings = get_settings()
@@ -463,6 +464,30 @@ async def card_revise(  # type: ignore[no-untyped-def]
     except service.SpecError as exc:
         return RedirectResponse(f"/cards/{key}?message={exc}", status_code=303)
     return RedirectResponse("/?message=已要求修改，正在重產一版", status_code=303)
+
+
+@app.get("/decisions", response_class=HTMLResponse)
+def decisions_page(request: Request, session: SessionDep, conn: ConnDep) -> HTMLResponse:
+    """一頁看完這個專案做過的所有決定 —— 存進資料庫只解決一半，看不到等於沒存。"""
+    return templates.TemplateResponse(
+        request,
+        "decisions.html",
+        {
+            "summary": summary_service.build(session, conn.jira_project),
+            "connection": to_view(conn),
+            "nav": "decisions",
+        },
+    )
+
+
+@app.get("/decisions.md", response_class=PlainTextResponse)
+def decisions_markdown(session: SessionDep, conn: ConnDep) -> PlainTextResponse:
+    text = summary_service.as_markdown(summary_service.build(session, conn.jira_project))
+    return PlainTextResponse(
+        text,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{conn.jira_project}-decisions.md"'},
+    )
 
 
 @app.post("/jobs/{job_id}/cancel")
