@@ -4,6 +4,15 @@
 
 設計與決策紀錄在 `../../SpecGate/`（PRD、prototype、三輪選型 JSON）。
 
+## 兩個 Jira 專案別搞混
+
+| 專案 | 是什麼 |
+|---|---|
+| **DEV**（DevLoop） | DevLoop 自己的開發卡。<https://swallowhouse.atlassian.net/jira/software/projects/DEV/boards/3/backlog> |
+| **KAN**（CareerBuddy） | 被 DevLoop 管理的產品線 —— `/settings` 裡填的「專案代號」是這個 |
+
+換句話說：DevLoop 的卡開在 DEV，DevLoop 讀的卡來自 KAN。
+
 ## 跑起來
 
 ```bash
